@@ -1,0 +1,31 @@
+# Dependências do Composer
+/vendor
+
+# Dependências do NPM
+/node_modules
+
+# Arquivos públicos gerados
+/public/hot
+/public/storage
+
+# Chaves de armazenamento do Laravel
+/storage/*.key
+!/storage/.gitignore
+
+# Arquivos de Ambiente (MUITO IMPORTANTE!)
+# NUNCA envie suas senhas para o GitHub
+.env
+.env.backup
+
+# Caches e Logs
+.phpunit.result.cache
+npm-debug.log
+yarn-error.log
+
+# Arquivos Homestead (se usar)
+Homestead.json
+Homestead.yaml
+
+# Arquivos de IDE (dentro do src)
+.idea
+.vscode

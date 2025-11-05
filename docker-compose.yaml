@@ -1,5 +1,3 @@
-version: "3"
-
 services:
   app:
     build:
@@ -11,7 +9,14 @@ services:
       - "80:80"
       - "443:443"
     volumes:
-      - ./src:/var/www/app/
+      # 1. Espelha o seu projeto (corrigindo a lentidão com ':cached')
+      - .:/var/www/app/:cached
+      
+      # 2. (A CORREÇÃO) Cria um volume rápido e separado para a pasta 'vendor',
+      #    corrigindo o problema de performance E o erro 'autoload.php'.
+      #    (Note que o caminho aqui é o caminho DENTRO do contentor)
+      - /var/www/app/src/vendor
+      
     networks:
       - app
   db:
@@ -32,8 +37,6 @@ services:
       - ./db/:/var/lib/mysql
     networks:
       - app
-volumes:
-  app:
 networks:
   app:
     driver: bridge

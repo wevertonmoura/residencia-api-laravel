@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Painel de Revisão (Fator Humano)</title>
+    <!-- Carregar Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Estilo para o spinner (indicador de loading) */
+        .spinner {
+            border-top-color: #3498db;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+    </style>
+    <script>
+        // Define a URL da nossa API Laravel
+        // Usamos 127.0.0.1 para corresponder ao endereço do navegador (evitar CORS)
+        const API_URL = 'http://127.0.0.1/api/artigos';
+
+        /**
+         * Função principal para buscar os artigos na API
+         */
+        async function buscarRascunhos() {
+            const listaRascunhos = document.getElementById('lista-rascunhos');
+            const listaAprovados = document.getElementById('lista-aprovados');
+            const btnAtualizar = document.getElementById('btn-atualizar');
+            const erroBox = document.getElementById('erro-box');
+
+            // 1. Mostrar estado de "carregando"
+            listaRascunhos.innerHTML = '<p class="text-gray-400">Buscando rascunhos...</p>';
+            listaAprovados.innerHTML = '<p class="text-gray-400">Buscando artigos aprovados...</p>';
+            erroBox.classList.add('hidden');
+            btnAtualizar.disabled = true;
+            btnAtualizar.classList.add('opacity-50', 'cursor-not-allowed');
+            btnAtualizar.innerHTML = `
+                <div class="spinner w-4 h-4 border-2 border-t-transparent rounded-full mr-2"></div>
+                Atualizando...
+            `;
+
+            try {
+                // 2. Fazer a chamada de rede (fetch) para a API
+                // (CORREÇÃO: Pedimos TODOS os artigos, sem filtro)
+                const response = await fetch(API_URL, {
+                    method: 'GET',
+                    headers: {
+                        'Accept': 'application/json',
+                    }
+                });
+
+                if (!response.ok) {
+                    throw new Error(`Erro de rede: ${response.statusText} (Status: ${response.status})`);
+                }
+
+                const jsonResponse = await response.json();
+                
+                // (O ArtigoController (corrigido) devolve { data: [...] })
+                const artigos = jsonResponse.data; 
+
+                if (!Array.isArray(artigos)) {
+                     throw new Error("A resposta da API não continha um array 'data' válido.");
+                }
+
+                // 3. (CORREÇÃO) Filtrar os artigos AQUI no JavaScript
+                const rascunhos = artigos.filter(artigo => artigo.status === 'rascunho');
+                const aprovados = artigos.filter(artigo => artigo.status === 'aprovado');
+
+                // 4. Limpar e renderizar as listas
+                listaRascunhos.innerHTML = '';
+                listaAprovados.innerHTML = '';
+
+                if (rascunhos.length > 0) {
+                    // Inverte a ordem para mostrar os mais recentes primeiro
+                    rascunhos.reverse().forEach(artigo => {
+                        listaRascunhos.innerHTML += criarCardArtigo(artigo);
+                    });
+                } else {
+                    listaRascunhos.innerHTML = '<p class="text-gray-400">Nenhum artigo em rascunho encontrado.</p>';
+                }
+                
+                if (aprovados.length > 0) {
+                    // Inverte a ordem para mostrar os mais recentes primeiro
+                    aprovados.reverse().forEach(artigo => {
+                        listaAprovados.innerHTML += criarCardArtigo(artigo, false); // false = não mostrar botão
+                    });
+                } else {
+                    listaAprovados.innerHTML = '<p class="text-gray-400">Nenhum artigo aprovado encontrado.</p>';
+                }
+
+
+            } catch (error) {
+                // 5. Mostrar erro
+                console.error('Falha ao buscar rascunhos:', error);
+                erroBox.classList.remove('hidden');
+                erroBox.textContent = `Erro: Não foi possível carregar os artigos. Verifique o console (F12) e se a API (Docker) está rodando. Detalhe: ${error.message}`;
+                listaRascunhos.innerHTML = '';
+                listaAprovados.innerHTML = '';
+            } finally {
+                // 6. Resetar o botão
+                btnAtualizar.disabled = false;
+                btnAtualizar.classList.remove('opacity-50', 'cursor-not-allowed');
+                btnAtualizar.innerHTML = 'Atualizar Lista';
+            }
+        }
+
+        /**
+         * Cria o HTML para um card de artigo
+         */
+        function criarCardArtigo(artigo, mostrarBotao = true) {
+            // Limita o conteúdo para 200 caracteres para o preview
+            const previewConteudo = (artigo.conteudo && typeof artigo.conteudo === 'string') 
+                ? (artigo.conteudo.length > 200 ? artigo.conteudo.substring(0, 200) + '...' : artigo.conteudo)
+                : 'Conteúdo indisponível.';
+
+            const botaoHtml = mostrarBotao ?
+                `<button
+                    onclick="aprovarArtigo(${artigo.id}, this)"
+                    class="mt-4 bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded-lg transition duration-300 ease-in-out"
+                >
+                    Aprovar
+                </button>` :
+                '<p class="mt-4 text-green-400 font-bold">Artigo Aprovado</p>';
+
+            return `
+                <div id="artigo-${artigo.id}" class="bg-gray-800 p-6 rounded-lg shadow-lg mb-4 border border-gray-700">
+                    <h3 class="text-xl font-bold text-blue-300">${artigo.titulo || 'Sem Título'} (Ação: ${artigo.acao_ticker || 'N/A'})</h3>
+                    <p class="text-sm text-yellow-400 mb-2">Recomendação da IA: <span class="font-bold">${artigo.recomendacao || 'N/A'}</span></p>
+                    <p class="text-gray-300 text-sm whitespace-pre-wrap">${previewConteudo}</p>
+                    ${botaoHtml}
+                </div>
+            `;
+        }
+
+        /**
+         * Função chamada pelo botão "Aprovar"
+         */
+        async function aprovarArtigo(id, botao) {
+            // Desabilita o botão para evitar cliques duplos
+            botao.disabled = true;
+            botao.textContent = 'Aprovando...';
+            botao.classList.add('opacity-50', 'cursor-not-allowed');
+
+            const url = `${API_URL}/${id}`;
+
+            try {
+                const response = await fetch(url, {
+                    method: 'PATCH', // Usamos PATCH para atualização parcial
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        status: 'aprovado' // O "Fator Humano" aprova
+                    })
+                });
+
+                if (!response.ok) {
+                    throw new Error(`Erro de rede: ${response.statusText}`);
+                }
+
+                // Se funcionou, movemos o card da lista de "Rascunhos" para "Aprovados"
+                const cardArtigo = document.getElementById(`artigo-${id}`);
+                const listaAprovados = document.getElementById('lista-aprovados');
+                
+                // Limpa a mensagem "Nenhum artigo aprovado" se for o primeiro
+                if (listaAprovados.querySelector('p')) {
+                    listaAprovados.innerHTML = '';
+                }
+                
+                listaAprovados.prepend(cardArtigo); // Move para o topo dos aprovados
+                
+                // Remove o botão e adiciona o texto "Aprovado"
+                botao.remove();
+                
+                // Adiciona o texto "Aprovado"
+                const pStatus = document.createElement('p');
+                pStatus.className = 'mt-4 text-green-400 font-bold';
+                pStatus.textContent = 'Artigo Aprovado';
+                cardArtigo.appendChild(pStatus);
+
+
+            } catch (error) {
+                console.error(`Falha ao aprovar o artigo ${id}:`, error);
+                alert(`Não foi possível aprovar o artigo. Verifique o console (F12) e se a API está rodando.`);
+                // Reabilita o botão se falhar
+                botao.disabled = false;
+                botao.textContent = 'Aprovar';
+                botao.classList.remove('opacity-50', 'cursor-not-allowed');
+            }
+        }
+
+        // Adiciona o listener para carregar os artigos quando a página abrir
+        // O 'DOMContentLoaded' espera o HTML estar pronto
+        document.addEventListener('DOMContentLoaded', buscarRascunhos);
+    </script>
+</head>
+
+<body class="bg-gray-900 text-white min-h-screen p-4 md:p-8 font-sans">
+    <div class="max-w-4xl mx-auto">
+
+        <header class="text-center mb-8">
+            <h1 class="text-4xl font-bold text-blue-400">Painel de Revisão (Fator Humano)</h1>
+            <p class="text-lg text-gray-400">Artigos gerados pela IA aguardando aprovação humana.</p>
+        </header>
+
+        <!-- Caixa de Erro (escondida por padrão) -->
+        <div id="erro-box" class="hidden bg-red-800 border border-red-600 text-white p-4 rounded-lg mb-6">
+            <!-- Mensagem de erro será inserida aqui -->
+        </div>
+
+        <!-- Seção de Rascunhos -->
+        <section class="mb-12">
+            <div class="flex justify-between items-center mb-4">
+                <h2 class="text-3xl font-semibold text-gray-200">Artigos em Rascunho</h2>
+                <button
+                    id="btn-atualizar"
+                    onclick="buscarRascunhos()"
+                    class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded-lg transition duration-300 ease-in-out flex items-center"
+                >
+                    Atualizar Lista
+                </button>
+            </div>
+            <div id="lista-rascunhos">
+                <!-- Artigos em rascunho serão inseridos aqui pelo JavaScript -->
+            </div>
+        </section>
+        
+        <!-- Seção de Aprovados -->
+        <section>
+            <h2 class="text-3xl font-semibold text-gray-200 mb-4">Artigos Aprovados</h2>
+            <div id="lista-aprovados">
+                <!-- Artigos aprovados serão inseridos aqui -->
+            </div>
+        </section>
+
+    </div>
+</body>
+
+</html>
