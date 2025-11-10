@@ -56,15 +56,13 @@ Route::apiResource('agentes', AgenteController::class);
 
 /*
 |--------------------------------------------------------------------------
-| Rota dos Artigos (PAINEL IA v2)
+| Rota dos Artigos (PAINEL IA v2) - ORDEM CORRIGIDA
 |--------------------------------------------------------------------------
+|
+| Colocamos as rotas personalizadas ANTES do apiResource
+| para garantir que o Laravel as encontre primeiro (Correção do 404).
+|
 */
-
-// O apiResource já cria:
-// GET /artigos (para index - Rascunhos)
-// DELETE /artigos/{id} (para destroy - Excluir)
-// ...e outras que não estamos usando (store, update, show)
-Route::apiResource('artigos', ArtigoController::class);
 
 // --- Rotas Personalizadas para o Painel v2 ---
 
@@ -79,3 +77,9 @@ Route::post('/artigos/{id}/aprovar', [ArtigoController::class, 'aprovar']);
 // Rota NOVA para DESAPROVAR um artigo
 // (Aponta para o método 'desaprovar' no seu Controller)
 Route::post('/artigos/{id}/desaprovar', [ArtigoController::class, 'desaprovar']);
+
+
+// O apiResource agora cuida das rotas restantes
+// (GET /artigos, DELETE /artigos/{id}, etc.)
+// O método index() deste resource irá listar os RASCUNHOS
+Route::apiResource('artigos', ArtigoController::class);

@@ -16,8 +16,10 @@ class Kernel extends HttpKernel
     protected $middleware = [
         // \App\Http\Middleware\TrustHosts::class,
         \App\Http\Middleware\TrustProxies::class,
-        \Fruitcake\Cors\HandleCors::class,
-  
+        
+        // CORREÇÃO: Usar o namespace do Fruitcake, que é o pacote instalado.
+        \Fruitcake\Cors\HandleCors::class, 
+        
         \App\Http\Middleware\PreventRequestsDuringMaintenance::class,
         \Illuminate\Foundation\Http\Middleware\ValidatePostSize::class,
         \App\Http\Middleware\TrimStrings::class,
@@ -40,9 +42,8 @@ class Kernel extends HttpKernel
         ],
 
         'api' => [
-            // ESTA É A LINHA QUE ESTÁ A CAUSAR O ERRO 429
+            // Desativamos o 'throttle:api' para desenvolvimento
             // 'throttle:api',
-            // Vamos desativá-la (comentando-a) para o nosso ambiente de desenvolvimento.
             \Illuminate\Routing\Middleware\SubstituteBindings::class,
         ],
     ];
@@ -68,4 +69,3 @@ class Kernel extends HttpKernel
         'JWTToken' => \App\Http\Middleware\JWTToken::class,
     ];
 }
-

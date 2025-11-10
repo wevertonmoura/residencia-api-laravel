@@ -1,16 +1,10 @@
-/src/node_modules
-/src/public/hot
-/src/public/storage
-/src/storage/*.key
-/src/vendor
-/src/.env.backup
-/src/.phpunit.result.cache
-/src/Homestead.json
-/src/Homestead.yaml
-/src/npm-debug.log
-/src/yarn-error.log
-/src/.idea
-/src/.vscode
-/db
+# Pasta do banco de dados do Docker
+/db/
+
+# Caches do Python
+agentes/__pycache__/
+*.pyc
+
+# Arquivos do OS
 .DS_Store
 Thumbs.db

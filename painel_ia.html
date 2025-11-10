@@ -1,246 +1,448 @@
 <!DOCTYPE html>
-<html lang="pt-BR">
-
+<html lang="pt-BR" class="h-full bg-gray-900">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Painel de Revisão (Fator Humano)</title>
-    <!-- Carregar Tailwind CSS -->
+    <title>Painel de Artigos da IA</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
-        /* Estilo para o spinner (indicador de loading) */
-        .spinner {
-            border-top-color: #3498db;
-            animation: spin 1s linear infinite;
+        /* Estilos personalizados para o scrollbar e botões */
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        /* Scrollbar personalizado */
+        .article-content::-webkit-scrollbar {
+            width: 8px;
+        }
+        .article-content::-webkit-scrollbar-track {
+            background: #2d3748; /* cinza-700 */
+            border-radius: 10px;
+        }
+        .article-content::-webkit-scrollbar-thumb {
+            background-color: #4a5568; /* cinza-600 */
+            border-radius: 10px;
+            border: 2px solid #2d3748; /* cinza-700 */
+        }
+        .article-content::-webkit-scrollbar-thumb:hover {
+            background-color: #718096; /* cinza-500 */
         }
 
+        /* Estilos dos botões */
+        .btn {
+            padding: 0.5rem 1rem;
+            border-radius: 0.375rem;
+            font-weight: 600;
+            transition: all 0.2s ease-in-out;
+            cursor: pointer;
+            border: none;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .btn-green {
+            background-color: #10B981; /* verde-500 */
+            color: white;
+        }
+        .btn-green:hover {
+            background-color: #059669; /* verde-600 */
+        }
+        .btn-yellow {
+            background-color: #F59E0B; /* amber-500 */
+            color: white;
+        }
+        .btn-yellow:hover {
+            background-color: #D97706; /* amber-600 */
+        }
+        .btn-red {
+            background-color: #EF4444; /* vermelho-500 */
+            color: white;
+        }
+        .btn-red:hover {
+            background-color: #DC2626; /* vermelho-600 */
+        }
+        .btn-icon {
+            background-color: #374151; /* cinza-700 */
+            color: #E5E7EB; /* cinza-200 */
+            padding: 0.625rem;
+        }
+        .btn-icon:hover {
+            background-color: #4B5563; /* cinza-600 */
+        }
+        
+        /* Animação de Spin */
+        .animate-spin {
+            animation: spin 1s linear infinite;
+        }
         @keyframes spin {
+            from {
+                transform: rotate(0deg);
+            }
             to {
                 transform: rotate(360deg);
             }
         }
     </style>
-    <script>
-        // Define a URL da nossa API Laravel
-        // Usamos 127.0.0.1 para corresponder ao endereço do navegador (evitar CORS)
-        const API_URL = 'http://127.0.0.1/api/artigos';
-
-        /**
-         * Função principal para buscar os artigos na API
-         */
-        async function buscarRascunhos() {
-            const listaRascunhos = document.getElementById('lista-rascunhos');
-            const listaAprovados = document.getElementById('lista-aprovados');
-            const btnAtualizar = document.getElementById('btn-atualizar');
-            const erroBox = document.getElementById('erro-box');
-
-            // 1. Mostrar estado de "carregando"
-            listaRascunhos.innerHTML = '<p class="text-gray-400">Buscando rascunhos...</p>';
-            listaAprovados.innerHTML = '<p class="text-gray-400">Buscando artigos aprovados...</p>';
-            erroBox.classList.add('hidden');
-            btnAtualizar.disabled = true;
-            btnAtualizar.classList.add('opacity-50', 'cursor-not-allowed');
-            btnAtualizar.innerHTML = `
-                <div class="spinner w-4 h-4 border-2 border-t-transparent rounded-full mr-2"></div>
-                Atualizando...
-            `;
-
-            try {
-                // 2. Fazer a chamada de rede (fetch) para a API
-                // (CORREÇÃO: Pedimos TODOS os artigos, sem filtro)
-                const response = await fetch(API_URL, {
-                    method: 'GET',
-                    headers: {
-                        'Accept': 'application/json',
-                    }
-                });
-
-                if (!response.ok) {
-                    throw new Error(`Erro de rede: ${response.statusText} (Status: ${response.status})`);
-                }
-
-                const jsonResponse = await response.json();
-                
-                // (O ArtigoController (corrigido) devolve { data: [...] })
-                const artigos = jsonResponse.data; 
-
-                if (!Array.isArray(artigos)) {
-                     throw new Error("A resposta da API não continha um array 'data' válido.");
-                }
-
-                // 3. (CORREÇÃO) Filtrar os artigos AQUI no JavaScript
-                const rascunhos = artigos.filter(artigo => artigo.status === 'rascunho');
-                const aprovados = artigos.filter(artigo => artigo.status === 'aprovado');
-
-                // 4. Limpar e renderizar as listas
-                listaRascunhos.innerHTML = '';
-                listaAprovados.innerHTML = '';
-
-                if (rascunhos.length > 0) {
-                    // Inverte a ordem para mostrar os mais recentes primeiro
-                    rascunhos.reverse().forEach(artigo => {
-                        listaRascunhos.innerHTML += criarCardArtigo(artigo);
-                    });
-                } else {
-                    listaRascunhos.innerHTML = '<p class="text-gray-400">Nenhum artigo em rascunho encontrado.</p>';
-                }
-                
-                if (aprovados.length > 0) {
-                    // Inverte a ordem para mostrar os mais recentes primeiro
-                    aprovados.reverse().forEach(artigo => {
-                        listaAprovados.innerHTML += criarCardArtigo(artigo, false); // false = não mostrar botão
-                    });
-                } else {
-                    listaAprovados.innerHTML = '<p class="text-gray-400">Nenhum artigo aprovado encontrado.</p>';
-                }
-
-
-            } catch (error) {
-                // 5. Mostrar erro
-                console.error('Falha ao buscar rascunhos:', error);
-                erroBox.classList.remove('hidden');
-                erroBox.textContent = `Erro: Não foi possível carregar os artigos. Verifique o console (F12) e se a API (Docker) está rodando. Detalhe: ${error.message}`;
-                listaRascunhos.innerHTML = '';
-                listaAprovados.innerHTML = '';
-            } finally {
-                // 6. Resetar o botão
-                btnAtualizar.disabled = false;
-                btnAtualizar.classList.remove('opacity-50', 'cursor-not-allowed');
-                btnAtualizar.innerHTML = 'Atualizar Lista';
-            }
-        }
-
-        /**
-         * Cria o HTML para um card de artigo
-         */
-        function criarCardArtigo(artigo, mostrarBotao = true) {
-            // Limita o conteúdo para 200 caracteres para o preview
-            const previewConteudo = (artigo.conteudo && typeof artigo.conteudo === 'string') 
-                ? (artigo.conteudo.length > 200 ? artigo.conteudo.substring(0, 200) + '...' : artigo.conteudo)
-                : 'Conteúdo indisponível.';
-
-            const botaoHtml = mostrarBotao ?
-                `<button
-                    onclick="aprovarArtigo(${artigo.id}, this)"
-                    class="mt-4 bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded-lg transition duration-300 ease-in-out"
-                >
-                    Aprovar
-                </button>` :
-                '<p class="mt-4 text-green-400 font-bold">Artigo Aprovado</p>';
-
-            return `
-                <div id="artigo-${artigo.id}" class="bg-gray-800 p-6 rounded-lg shadow-lg mb-4 border border-gray-700">
-                    <h3 class="text-xl font-bold text-blue-300">${artigo.titulo || 'Sem Título'} (Ação: ${artigo.acao_ticker || 'N/A'})</h3>
-                    <p class="text-sm text-yellow-400 mb-2">Recomendação da IA: <span class="font-bold">${artigo.recomendacao || 'N/A'}</span></p>
-                    <p class="text-gray-300 text-sm whitespace-pre-wrap">${previewConteudo}</p>
-                    ${botaoHtml}
-                </div>
-            `;
-        }
-
-        /**
-         * Função chamada pelo botão "Aprovar"
-         */
-        async function aprovarArtigo(id, botao) {
-            // Desabilita o botão para evitar cliques duplos
-            botao.disabled = true;
-            botao.textContent = 'Aprovando...';
-            botao.classList.add('opacity-50', 'cursor-not-allowed');
-
-            const url = `${API_URL}/${id}`;
-
-            try {
-                const response = await fetch(url, {
-                    method: 'PATCH', // Usamos PATCH para atualização parcial
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Accept': 'application/json',
-                    },
-                    body: JSON.stringify({
-                        status: 'aprovado' // O "Fator Humano" aprova
-                    })
-                });
-
-                if (!response.ok) {
-                    throw new Error(`Erro de rede: ${response.statusText}`);
-                }
-
-                // Se funcionou, movemos o card da lista de "Rascunhos" para "Aprovados"
-                const cardArtigo = document.getElementById(`artigo-${id}`);
-                const listaAprovados = document.getElementById('lista-aprovados');
-                
-                // Limpa a mensagem "Nenhum artigo aprovado" se for o primeiro
-                if (listaAprovados.querySelector('p')) {
-                    listaAprovados.innerHTML = '';
-                }
-                
-                listaAprovados.prepend(cardArtigo); // Move para o topo dos aprovados
-                
-                // Remove o botão e adiciona o texto "Aprovado"
-                botao.remove();
-                
-                // Adiciona o texto "Aprovado"
-                const pStatus = document.createElement('p');
-                pStatus.className = 'mt-4 text-green-400 font-bold';
-                pStatus.textContent = 'Artigo Aprovado';
-                cardArtigo.appendChild(pStatus);
-
-
-            } catch (error) {
-                console.error(`Falha ao aprovar o artigo ${id}:`, error);
-                alert(`Não foi possível aprovar o artigo. Verifique o console (F12) e se a API está rodando.`);
-                // Reabilita o botão se falhar
-                botao.disabled = false;
-                botao.textContent = 'Aprovar';
-                botao.classList.remove('opacity-50', 'cursor-not-allowed');
-            }
-        }
-
-        // Adiciona o listener para carregar os artigos quando a página abrir
-        // O 'DOMContentLoaded' espera o HTML estar pronto
-        document.addEventListener('DOMContentLoaded', buscarRascunhos);
-    </script>
 </head>
+<body class="h-full text-gray-200 p-4 md:p-8">
 
-<body class="bg-gray-900 text-white min-h-screen p-4 md:p-8 font-sans">
-    <div class="max-w-4xl mx-auto">
-
-        <header class="text-center mb-8">
-            <h1 class="text-4xl font-bold text-blue-400">Painel de Revisão (Fator Humano)</h1>
-            <p class="text-lg text-gray-400">Artigos gerados pela IA aguardando aprovação humana.</p>
-        </header>
-
-        <!-- Caixa de Erro (escondida por padrão) -->
-        <div id="erro-box" class="hidden bg-red-800 border border-red-600 text-white p-4 rounded-lg mb-6">
-            <!-- Mensagem de erro será inserida aqui -->
+    <div class="max-w-7xl mx-auto">
+        <div class="bg-gray-800 shadow-lg rounded-xl p-6 mb-6 flex justify-between items-center">
+            <div>
+                <h1 class="text-2xl font-bold text-white">Painel de Conteúdo da IA</h1>
+                <p class="text-gray-400 mt-1">Gerencie, aprove, desaprove e exclua os artigos gerados.</p>
+                <p class="text-xs text-gray-500 mt-2" id="last-updated">Listas atualizadas às --:--:--</p>
+            </div>
+            <button class="btn btn-icon" id="refresh-button" title="Atualizar Listas">
+                <svg id="refresh-icon" xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" viewBox="0 0 16 16">
+                    <path fill-rule="evenodd" d="M8 3a5 5 0 1 0 4.546 2.914.5.5 0 0 1 .908-.417A6 6 0 1 1 8 2v1z"/>
+                    <path d="M8 4.466V.534a.25.25 0 0 1 .41-.192l2.36 1.966c.12.1.12.284 0 .384L8.41 4.658A.25.25 0 0 1 8 4.466z"/>
+                </svg>
+                <span class="hidden md:inline ml-2">Atualizar Listas</span>
+            </button>
         </div>
 
-        <!-- Seção de Rascunhos -->
-        <section class="mb-12">
-            <div class="flex justify-between items-center mb-4">
-                <h2 class="text-3xl font-semibold text-gray-200">Artigos em Rascunho</h2>
-                <button
-                    id="btn-atualizar"
-                    onclick="buscarRascunhos()"
-                    class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded-lg transition duration-300 ease-in-out flex items-center"
-                >
-                    Atualizar Lista
-                </button>
-            </div>
-            <div id="lista-rascunhos">
-                <!-- Artigos em rascunho serão inseridos aqui pelo JavaScript -->
-            </div>
-        </section>
-        
-        <!-- Seção de Aprovados -->
-        <section>
-            <h2 class="text-3xl font-semibold text-gray-200 mb-4">Artigos Aprovados</h2>
-            <div id="lista-aprovados">
-                <!-- Artigos aprovados serão inseridos aqui -->
-            </div>
-        </section>
+        <div id="error-message-global" class="hidden bg-red-800 border border-red-700 text-red-200 px-4 py-3 rounded-lg relative mb-4" role="alert">
+            <strong class="font-bold">Erro de Conexão!</strong>
+            <span class="block sm:inline" id="error-text-global">Não foi possível conectar à API. Verifique se o servidor Laravel está rodando em http://127.0.0.1</span>
+        </div>
 
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+
+            <div>
+                <h2 class="text-xl font-semibold text-white mb-4">Rascunhos Pendentes</h2>
+                <div id="rascunhos-list" class="space-y-4">
+                    <p class="text-gray-500" id="rascunhos-loading">A carregar rascunhos...</p>
+                    <p class="text-red-400 hidden" id="rascunhos-error">Falha ao carregar rascunhos.</p>
+                </div>
+            </div>
+
+            <div>
+                <h2 class="text-xl font-semibold text-white mb-4">Artigos Publicados</h2>
+                <div id="publicados-list" class="space-y-4">
+                    <p class="text-gray-500" id="publicados-loading">A carregar artigos publicados...</p>
+                    <p class="text-red-400 hidden" id="publicados-error">Falha ao carregar artigos publicados.</p>
+                </div>
+            </div>
+        </div>
     </div>
-</body>
 
+    <div id="delete-modal" class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-75 backdrop-blur-sm hidden">
+        <div class="bg-gray-800 rounded-xl shadow-2xl p-6 w-full max-w-md mx-4 border border-gray-700">
+            <h3 class="text-xl font-bold text-white mb-4">Confirmar Exclusão</h3>
+            <p class="text-gray-300 mb-6">Tem a certeza de que deseja excluir permanentemente o artigo "<strong id="delete-modal-title">...</strong>"? Esta ação não pode ser desfeita.</p>
+            <div class="flex justify-end space-x-4">
+                <button id="delete-modal-cancel" class="btn bg-gray-600 hover:bg-gray-500 text-white">Cancelar</button>
+                <button id="delete-modal-confirm" class="btn btn-red">Excluir Permanentemente</button>
+            </div>
+        </div>
+    </div>
+    
+    <template id="article-card-template">
+        <div class="bg-gray-800 shadow-lg rounded-xl overflow-hidden border border-gray-700 article-card">
+            <div class="p-5">
+                <h3 class="text-lg font-bold text-white mb-2 article-title"></h3>
+                <div class="flex flex-wrap gap-x-4 gap-y-1 text-sm text-gray-400 mb-3">
+                    <span class="article-id"></span>
+                    <span class="article-ticker"></span>
+                    <span class="article-rec"></span>
+                </div>
+                <div class="text-xs text-gray-500 mb-3 article-date"></div>
+                
+                <div class="article-content text-gray-300 h-40 overflow-y-auto bg-gray-900 p-3 rounded-md border border-gray-700 text-sm"></div>
+                
+                <p class="article-error-message text-red-400 text-sm mt-2 hidden"></p>
+            </div>
+            <div class="bg-gray-700 px-5 py-3 flex justify-end space-x-3 article-actions">
+                </div>
+        </div>
+    </template>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const API_BASE_URL = 'http://127.0.0.1/api/artigos';
+
+            const rascunhosList = document.getElementById('rascunhos-list');
+            const publicadosList = document.getElementById('publicados-list');
+            const refreshButton = document.getElementById('refresh-button');
+            const refreshIcon = document.getElementById('refresh-icon');
+            const lastUpdated = document.getElementById('last-updated');
+
+            // Mensagens de estado
+            const rascunhosLoading = document.getElementById('rascunhos-loading');
+            const rascunhosError = document.getElementById('rascunhos-error');
+            const publicadosLoading = document.getElementById('publicados-loading');
+            const publicadosError = document.getElementById('publicados-error');
+            
+            const globalErrorMsg = document.getElementById('error-message-global');
+            const globalErrorText = document.getElementById('error-text-global');
+
+            // Modal
+            const deleteModal = document.getElementById('delete-modal');
+            const deleteModalTitle = document.getElementById('delete-modal-title');
+            const deleteModalCancel = document.getElementById('delete-modal-cancel');
+            const deleteModalConfirm = document.getElementById('delete-modal-confirm');
+
+            // Template
+            const articleTemplate = document.getElementById('article-card-template');
+
+            // Função de fetch genérica
+            async function fetchAPI(url, options = {}) {
+                try {
+                    const response = await fetch(url, {
+                        ...options,
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Accept': 'application/json',
+                            ...options.headers,
+                        },
+                    });
+                    if (!response.ok) {
+                        const errorData = await response.json().catch(() => ({}));
+                        console.error('Erro API:', errorData);
+                        throw new Error(`Erro HTTP ${response.status}: ${errorData.message || response.statusText}`);
+                    }
+                    if (response.status === 204) { // No Content
+                        return null;
+                    }
+                    return await response.json();
+                } catch (error) {
+                    console.error('Falha na comunicação Fetch:', error);
+                    showGlobalError(`Falha na comunicação com a API (${error.message}). Verifique se o servidor Laravel (http://127.0.0.1) está a correr e o CORS está configurado.`);
+                    throw error;
+                }
+            }
+
+            // Mostrar erro global
+            function showGlobalError(message) {
+                globalErrorText.textContent = message;
+                globalErrorMsg.classList.remove('hidden');
+            }
+            
+            // Ocultar erro global
+            function hideGlobalError() {
+                globalErrorMsg.classList.add('hidden');
+            }
+
+            // Atualiza a hora da última atualização
+            function updateTimestamp() {
+                const now = new Date();
+                lastUpdated.textContent = `Listas atualizadas às ${now.toLocaleTimeString('pt-BR')}`;
+            }
+
+            // Cria um card de artigo
+            function createArticleCard(article, type) {
+                const card = articleTemplate.content.cloneNode(true).firstElementChild;
+                card.dataset.id = article.id;
+                card.querySelector('.article-title').textContent = article.titulo;
+                card.querySelector('.article-id').textContent = `ID: ${article.id}`;
+                card.querySelector('.article-ticker').textContent = `Ticker: ${article.acao_ticker || 'N/A'}`;
+                card.querySelector('.article-rec').textContent = `Rec: ${article.recomendacao || 'N/A'}`;
+                
+                // Formata a data de criação
+                try {
+                    const date = new Date(article.created_at);
+                    if (isNaN(date)) throw new Error('Invalid Date');
+                    card.querySelector('.article-date').textContent = `Criado em: ${date.toLocaleString('pt-BR')}`;
+                } catch (e) {
+                    card.querySelector('.article-date').textContent = `Criado em: Invalid Date`;
+                }
+                
+                // Preenche o conteúdo, tratando quebra de linhas
+                card.querySelector('.article-content').innerHTML = (article.conteudo || "").replace(/\n/g, '<br>');
+
+                const actionsContainer = card.querySelector('.article-actions');
+                
+                // Adiciona botões com base no tipo
+                if (type === 'rascunho') {
+                    const approveButton = document.createElement('button');
+                    approveButton.className = 'btn btn-green';
+                    approveButton.textContent = 'Aprovar';
+                    approveButton.onclick = (e) => handleAction(e, () => handleApprove(article.id));
+                    actionsContainer.appendChild(approveButton);
+                } else if (type === 'publicado') {
+                    const disapproveButton = document.createElement('button');
+                    // *** CORREÇÃO DO NOME DO BOTÃO AQUI ***
+                    disapproveButton.className = 'btn btn-yellow';
+                    disapproveButton.textContent = 'Desaprovar'; // <--- MUDADO DE "Voltar p/ Rascunho"
+                    disapproveButton.onclick = (e) => handleAction(e, () => handleDisapprove(article.id));
+                    actionsContainer.appendChild(disapproveButton);
+
+                    const deleteButton = document.createElement('button');
+                    deleteButton.className = 'btn btn-red';
+                    deleteButton.textContent = 'Excluir';
+                    deleteButton.onclick = () => showDeleteModal(article.id, article.titulo);
+                    actionsContainer.appendChild(deleteButton);
+                }
+
+                return card;
+            }
+
+            // Animação de remoção de card
+            function removeCard(card) {
+                if (!card) return;
+                card.style.transition = 'opacity 0.3s ease-out, transform 0.3s ease-out, height 0.3s ease-out';
+                card.style.opacity = '0';
+                card.style.transform = 'scale(0.95)';
+                card.style.height = `${card.offsetHeight}px`; // Prepara para animar a altura
+                setTimeout(() => {
+                    card.style.height = '0';
+                    card.style.margin = '0';
+                    card.style.padding = '0';
+                }, 100);
+                setTimeout(() => {
+                    card.remove();
+                }, 400); // Duração da animação de altura
+            }
+
+            // Busca RASCUNHOS
+            async function fetchRascunhos() {
+                rascunhosLoading.classList.remove('hidden');
+                rascunhosError.classList.add('hidden');
+                rascunhosList.innerHTML = '';
+                
+                try {
+                    const data = await fetchAPI(API_BASE_URL); // GET /api/artigos (o seu index() filtra por 'rascunho')
+                    if (data.data.length === 0) {
+                        rascunhosList.innerHTML = '<p class="text-gray-500 text-center">Nenhum rascunho pendente.</p>';
+                    } else {
+                        data.data.forEach(article => {
+                            rascunhosList.appendChild(createArticleCard(article, 'rascunho'));
+                        });
+                    }
+                } catch (error) {
+                    rascunhosError.classList.remove('hidden');
+                } finally {
+                    rascunhosLoading.classList.add('hidden');
+                }
+            }
+
+            // Busca PUBLICADOS
+            async function fetchPublicados() {
+                publicadosLoading.classList.remove('hidden');
+                publicadosError.classList.add('hidden');
+                publicadosList.innerHTML = '';
+
+                try {
+                    const data = await fetchAPI(`${API_BASE_URL}/publicados`); // GET /api/artigos/publicados
+                    if (data.data.length === 0) {
+                        publicadosList.innerHTML = '<p class="text-gray-500 text-center">Nenhum artigo publicado.</p>';
+                    } else {
+                        data.data.forEach(article => {
+                            publicadosList.appendChild(createArticleCard(article, 'publicado'));
+                        });
+                    }
+                } catch (error) {
+                    publicadosError.classList.remove('hidden');
+                } finally {
+                    publicadosLoading.classList.add('hidden');
+                }
+            }
+            
+            // Função principal para carregar tudo
+            async function loadAllData() {
+                hideGlobalError();
+                refreshButton.disabled = true;
+                refreshIcon.classList.add('animate-spin');
+                
+                await Promise.all([
+                    fetchRascunhos(),
+                    fetchPublicados()
+                ]);
+                
+                refreshButton.disabled = false;
+                refreshIcon.classList.remove('animate-spin');
+                updateTimestamp();
+            }
+
+            // --- Handlers de Ação ---
+
+            // Wrapper para botões de ação (mostrar loading)
+            async function handleAction(event, actionFunction) {
+                const button = event.target;
+                const originalText = button.textContent;
+                button.disabled = true;
+                button.textContent = 'Aguarde...';
+
+                await actionFunction();
+
+                // Não reativar o botão, pois o card será removido
+            }
+            
+            // Função para mostrar erro específico no card
+            function showCardError(articleId, message) {
+                const card = document.querySelector(`.article-card[data-id="${articleId}"]`);
+                if (card) {
+                    const errorMsg = card.querySelector('.article-error-message');
+                    errorMsg.textContent = message;
+                    errorMsg.classList.remove('hidden');
+                    // Oculta a mensagem após 3 segundos
+                    setTimeout(() => {
+                        errorMsg.classList.add('hidden');
+                    }, 3000);
+                }
+            }
+
+            async function handleApprove(id) {
+                const card = rascunhosList.querySelector(`.article-card[data-id="${id}"]`);
+                try {
+                    await fetchAPI(`${API_BASE_URL}/${id}/aprovar`, { method: 'POST' });
+                    removeCard(card); // Remove da lista de rascunhos
+                    await fetchPublicados(); // Recarrega só os publicados
+                } catch (error) {
+                    showCardError(id, `Erro ao aprovar: ${error.message}`);
+                    const button = card.querySelector('.btn-green');
+                    button.disabled = false;
+                    button.textContent = 'Aprovar';
+                }
+            }
+
+            async function handleDisapprove(id) {
+                const card = publicadosList.querySelector(`.article-card[data-id="${id}"]`);
+                try {
+                    await fetchAPI(`${API_BASE_URL}/${id}/desaprovar`, { method: 'POST' });
+                    removeCard(card); // Remove da lista de publicados
+                    await fetchRascunhos(); // Recarrega só os rascunhos
+                } catch (error) {
+                    showCardError(id, `Erro ao desaprovar: ${error.message}`);
+                    const button = card.querySelector('.btn-yellow');
+                    button.disabled = false;
+                    button.textContent = 'Desaprovar';
+                }
+            }
+
+            async function handleDelete(id) {
+                deleteModal.classList.add('hidden');
+                const card = publicadosList.querySelector(`.article-card[data-id="${id}"]`);
+                try {
+                    await fetchAPI(`${API_BASE_URL}/${id}`, { method: 'DELETE' });
+                    removeCard(card); // Remove da lista de publicados
+                } catch (error) {
+                    showCardError(id, `Erro ao excluir: ${error.message}`);
+                }
+            }
+
+            // --- Modal ---
+            function showDeleteModal(id, title) {
+                deleteModalTitle.textContent = title || "este artigo";
+                deleteModalConfirm.dataset.id = id;
+                deleteModal.classList.remove('hidden');
+            }
+
+            deleteModalCancel.onclick = () => deleteModal.classList.add('hidden');
+            deleteModalConfirm.onclick = () => {
+                const id = deleteModalConfirm.dataset.id;
+                if (id) {
+                    handleDelete(id);
+                }
+            };
+
+            // Event Listeners
+            refreshButton.addEventListener('click', loadAllData);
+            
+            // Carga Inicial
+            loadAllData();
+        });
+    </script>
+</body>
 </html>

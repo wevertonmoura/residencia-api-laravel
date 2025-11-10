@@ -9,16 +9,16 @@ services:
       - "80:80"
       - "443:443"
     volumes:
-      # 1. Espelha o seu projeto (corrigindo a lentidão com ':cached')
+      # 1. Mapeia o seu projeto local para o contentor
       - .:/var/www/app/:cached
       
-      # 2. (A CORREÇÃO) Cria um volume rápido e separado para a pasta 'vendor',
-      #    corrigindo o problema de performance E o erro 'autoload.php'.
-      #    (Note que o caminho aqui é o caminho DENTRO do contentor)
-      - /var/www/app/src/vendor
+      # 2. (A CORREÇÃO CRUCIAL) Cria um volume nomeado RÁPIDO para a pasta 'vendor'
+      #    Isto resolve os problemas de cache (404) e desempenho (idioma)
+      - vendor_cache:/var/www/app/src/vendor
       
     networks:
       - app
+      
   db:
     platform: linux/x86_64
     image: mysql:5.7
@@ -34,9 +34,15 @@ services:
     expose:
       - "3306"
     volumes:
+      # Mapeia a pasta local ./db para os dados do MySQL
       - ./db/:/var/lib/mysql
     networks:
       - app
+
 networks:
   app:
     driver: bridge
+
+# Define o volume nomeado 'vendor_cache' que usámos acima
+volumes:
+  vendor_cache:
