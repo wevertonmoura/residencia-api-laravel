@@ -1,448 +1,140 @@
 <!DOCTYPE html>
-<html lang="pt-BR" class="h-full bg-gray-900">
+<html lang="pt-BR" class="h-full bg-slate-900">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Painel de Artigos da IA</title>
+    <title>Painel Admin | Jornal do Commercio</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <style>
-        /* Estilos personalizados para o scrollbar e botões */
-        body {
-            font-family: 'Inter', sans-serif;
-        }
-        /* Scrollbar personalizado */
-        .article-content::-webkit-scrollbar {
-            width: 8px;
-        }
-        .article-content::-webkit-scrollbar-track {
-            background: #2d3748; /* cinza-700 */
-            border-radius: 10px;
-        }
-        .article-content::-webkit-scrollbar-thumb {
-            background-color: #4a5568; /* cinza-600 */
-            border-radius: 10px;
-            border: 2px solid #2d3748; /* cinza-700 */
-        }
-        .article-content::-webkit-scrollbar-thumb:hover {
-            background-color: #718096; /* cinza-500 */
-        }
-
-        /* Estilos dos botões */
-        .btn {
-            padding: 0.5rem 1rem;
-            border-radius: 0.375rem;
-            font-weight: 600;
-            transition: all 0.2s ease-in-out;
-            cursor: pointer;
-            border: none;
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-        }
-        .btn-green {
-            background-color: #10B981; /* verde-500 */
-            color: white;
-        }
-        .btn-green:hover {
-            background-color: #059669; /* verde-600 */
-        }
-        .btn-yellow {
-            background-color: #F59E0B; /* amber-500 */
-            color: white;
-        }
-        .btn-yellow:hover {
-            background-color: #D97706; /* amber-600 */
-        }
-        .btn-red {
-            background-color: #EF4444; /* vermelho-500 */
-            color: white;
-        }
-        .btn-red:hover {
-            background-color: #DC2626; /* vermelho-600 */
-        }
-        .btn-icon {
-            background-color: #374151; /* cinza-700 */
-            color: #E5E7EB; /* cinza-200 */
-            padding: 0.625rem;
-        }
-        .btn-icon:hover {
-            background-color: #4B5563; /* cinza-600 */
-        }
-        
-        /* Animação de Spin */
-        .animate-spin {
-            animation: spin 1s linear infinite;
-        }
-        @keyframes spin {
-            from {
-                transform: rotate(0deg);
-            }
-            to {
-                transform: rotate(360deg);
-            }
-        }
-    </style>
-</head>
-<body class="h-full text-gray-200 p-4 md:p-8">
-
-    <div class="max-w-7xl mx-auto">
-        <div class="bg-gray-800 shadow-lg rounded-xl p-6 mb-6 flex justify-between items-center">
-            <div>
-                <h1 class="text-2xl font-bold text-white">Painel de Conteúdo da IA</h1>
-                <p class="text-gray-400 mt-1">Gerencie, aprove, desaprove e exclua os artigos gerados.</p>
-                <p class="text-xs text-gray-500 mt-2" id="last-updated">Listas atualizadas às --:--:--</p>
-            </div>
-            <button class="btn btn-icon" id="refresh-button" title="Atualizar Listas">
-                <svg id="refresh-icon" xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" viewBox="0 0 16 16">
-                    <path fill-rule="evenodd" d="M8 3a5 5 0 1 0 4.546 2.914.5.5 0 0 1 .908-.417A6 6 0 1 1 8 2v1z"/>
-                    <path d="M8 4.466V.534a.25.25 0 0 1 .41-.192l2.36 1.966c.12.1.12.284 0 .384L8.41 4.658A.25.25 0 0 1 8 4.466z"/>
-                </svg>
-                <span class="hidden md:inline ml-2">Atualizar Listas</span>
-            </button>
-        </div>
-
-        <div id="error-message-global" class="hidden bg-red-800 border border-red-700 text-red-200 px-4 py-3 rounded-lg relative mb-4" role="alert">
-            <strong class="font-bold">Erro de Conexão!</strong>
-            <span class="block sm:inline" id="error-text-global">Não foi possível conectar à API. Verifique se o servidor Laravel está rodando em http://127.0.0.1</span>
-        </div>
-
-        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-
-            <div>
-                <h2 class="text-xl font-semibold text-white mb-4">Rascunhos Pendentes</h2>
-                <div id="rascunhos-list" class="space-y-4">
-                    <p class="text-gray-500" id="rascunhos-loading">A carregar rascunhos...</p>
-                    <p class="text-red-400 hidden" id="rascunhos-error">Falha ao carregar rascunhos.</p>
-                </div>
-            </div>
-
-            <div>
-                <h2 class="text-xl font-semibold text-white mb-4">Artigos Publicados</h2>
-                <div id="publicados-list" class="space-y-4">
-                    <p class="text-gray-500" id="publicados-loading">A carregar artigos publicados...</p>
-                    <p class="text-red-400 hidden" id="publicados-error">Falha ao carregar artigos publicados.</p>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <div id="delete-modal" class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-75 backdrop-blur-sm hidden">
-        <div class="bg-gray-800 rounded-xl shadow-2xl p-6 w-full max-w-md mx-4 border border-gray-700">
-            <h3 class="text-xl font-bold text-white mb-4">Confirmar Exclusão</h3>
-            <p class="text-gray-300 mb-6">Tem a certeza de que deseja excluir permanentemente o artigo "<strong id="delete-modal-title">...</strong>"? Esta ação não pode ser desfeita.</p>
-            <div class="flex justify-end space-x-4">
-                <button id="delete-modal-cancel" class="btn bg-gray-600 hover:bg-gray-500 text-white">Cancelar</button>
-                <button id="delete-modal-confirm" class="btn btn-red">Excluir Permanentemente</button>
-            </div>
-        </div>
-    </div>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
     
-    <template id="article-card-template">
-        <div class="bg-gray-800 shadow-lg rounded-xl overflow-hidden border border-gray-700 article-card">
-            <div class="p-5">
-                <h3 class="text-lg font-bold text-white mb-2 article-title"></h3>
-                <div class="flex flex-wrap gap-x-4 gap-y-1 text-sm text-gray-400 mb-3">
-                    <span class="article-id"></span>
-                    <span class="article-ticker"></span>
-                    <span class="article-rec"></span>
-                </div>
-                <div class="text-xs text-gray-500 mb-3 article-date"></div>
-                
-                <div class="article-content text-gray-300 h-40 overflow-y-auto bg-gray-900 p-3 rounded-md border border-gray-700 text-sm"></div>
-                
-                <p class="article-error-message text-red-400 text-sm mt-2 hidden"></p>
+    <link rel="stylesheet" href="styles/dashboard.css">
+
+    </head>
+<body class="h-full text-slate-300 flex">
+
+    <aside class="w-64 bg-slate-950 border-r border-slate-800 flex flex-col fixed h-full md:relative z-20">
+        
+        <div class="p-6 border-b border-slate-800 flex flex-col gap-4">
+            <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/6/65/Jornal_do_Commercio_Recife_logo.svg/2560px-Jornal_do_Commercio_Recife_logo.svg.png"
+                 alt="Jornal do Commercio"
+                 class="h-8 w-auto object-contain brightness-0 invert opacity-90 self-start">
+            
+            <div class="flex items-center gap-2">
+                <div class="h-px w-4 bg-slate-700"></div>
+                <span class="text-[10px] uppercase tracking-widest text-slate-500 font-bold">
+                    Sistema Invasores.IA
+                </span>
             </div>
-            <div class="bg-gray-700 px-5 py-3 flex justify-end space-x-3 article-actions">
-                </div>
         </div>
-    </template>
 
-    <script>
-        document.addEventListener('DOMContentLoaded', () => {
-            const API_BASE_URL = 'http://127.0.0.1/api/artigos';
+        <nav class="flex-1 px-4 space-y-2 mt-6">
+            <button onclick="showTab('painel')" class="w-full flex items-center gap-3 px-4 py-3 bg-blue-600/10 text-blue-400 rounded-xl border border-blue-600/20 text-left transition-colors hover:bg-blue-600/20 font-medium">
+                📊 Painel Principal
+            </button>
+            <button onclick="showTab('lixeira')" class="w-full flex items-center gap-3 px-4 py-3 text-slate-400 hover:bg-slate-800 rounded-xl text-left transition-colors font-medium">
+                🗑️ Lixeira / Excluídos
+            </button>
+            <div class="pt-4 mt-4 border-t border-slate-800">
+                <a href="index.html" target="_blank" class="w-full flex items-center gap-3 px-4 py-3 text-slate-400 hover:text-white hover:bg-slate-800 rounded-xl transition-colors font-medium">
+                    🌍 Ver Site Público
+                </a>
+            </div>
+        </nav>
 
-            const rascunhosList = document.getElementById('rascunhos-list');
-            const publicadosList = document.getElementById('publicados-list');
-            const refreshButton = document.getElementById('refresh-button');
-            const refreshIcon = document.getElementById('refresh-icon');
-            const lastUpdated = document.getElementById('last-updated');
+        <div class="p-4 bg-slate-900/50 text-center border-t border-slate-800">
+            <p class="text-[10px] text-slate-600">Desenvolvido para</p>
+            <p class="text-xs font-bold text-slate-500">Jornal do Commercio</p>
+        </div>
+    </aside>
 
-            // Mensagens de estado
-            const rascunhosLoading = document.getElementById('rascunhos-loading');
-            const rascunhosError = document.getElementById('rascunhos-error');
-            const publicadosLoading = document.getElementById('publicados-loading');
-            const publicadosError = document.getElementById('publicados-error');
-            
-            const globalErrorMsg = document.getElementById('error-message-global');
-            const globalErrorText = document.getElementById('error-text-global');
+    <main class="flex-1 flex flex-col h-screen bg-slate-900 overflow-hidden relative">
+        <header class="h-16 border-b border-slate-800 flex items-center justify-between px-6 bg-slate-900/95 backdrop-blur z-10">
+            <h2 id="page-title" class="text-lg font-semibold text-white">Visão Geral</h2>
+            <div class="flex gap-3">
+                <button onclick="abrirModalGerar()" class="bg-purple-600 hover:bg-purple-500 text-white px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-2 transition-all shadow-lg shadow-purple-900/20">
+                    ✨ Gerar Novos Artigos
+                </button>
+                <button onclick="loadAll()" class="bg-slate-800 hover:bg-slate-700 text-slate-200 px-4 py-2 rounded-lg text-sm border border-slate-700 transition-colors flex items-center gap-2">
+                    Atualizar
+                </button>
+            </div>
+        </header>
 
-            // Modal
-            const deleteModal = document.getElementById('delete-modal');
-            const deleteModalTitle = document.getElementById('delete-modal-title');
-            const deleteModalCancel = document.getElementById('delete-modal-cancel');
-            const deleteModalConfirm = document.getElementById('delete-modal-confirm');
+        <div class="flex-1 overflow-y-auto p-6 relative">
+            <div id="global-loader" class="hidden absolute inset-0 bg-slate-900/50 z-50 flex items-center justify-center backdrop-blur-sm">
+                <div class="animate-spin w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full"></div>
+            </div>
 
-            // Template
-            const articleTemplate = document.getElementById('article-card-template');
+            <div id="tab-painel" class="grid grid-cols-1 xl:grid-cols-2 gap-8">
+                <section class="flex flex-col h-full">
+                    <div class="flex items-center justify-between mb-4 sticky top-0 bg-slate-900 py-2 z-10">
+                        <h3 class="text-slate-100 font-bold flex items-center gap-2">
+                            <span class="w-2.5 h-2.5 bg-yellow-500 rounded-full animate-pulse"></span> Rascunhos Pendentes
+                        </h3>
+                        <span id="count-rascunhos" class="bg-slate-800 text-slate-400 text-xs font-bold px-2 py-1 rounded-full">0</span>
+                    </div>
+                    <div id="list-rascunhos" class="space-y-4 pb-10"></div>
+                </section>
 
-            // Função de fetch genérica
-            async function fetchAPI(url, options = {}) {
-                try {
-                    const response = await fetch(url, {
-                        ...options,
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'Accept': 'application/json',
-                            ...options.headers,
-                        },
-                    });
-                    if (!response.ok) {
-                        const errorData = await response.json().catch(() => ({}));
-                        console.error('Erro API:', errorData);
-                        throw new Error(`Erro HTTP ${response.status}: ${errorData.message || response.statusText}`);
-                    }
-                    if (response.status === 204) { // No Content
-                        return null;
-                    }
-                    return await response.json();
-                } catch (error) {
-                    console.error('Falha na comunicação Fetch:', error);
-                    showGlobalError(`Falha na comunicação com a API (${error.message}). Verifique se o servidor Laravel (http://127.0.0.1) está a correr e o CORS está configurado.`);
-                    throw error;
-                }
-            }
+                <section class="flex flex-col h-full">
+                    <div class="flex items-center justify-between mb-4 sticky top-0 bg-slate-900 py-2 z-10">
+                        <h3 class="text-slate-100 font-bold flex items-center gap-2">
+                            <span class="w-2.5 h-2.5 bg-green-500 rounded-full"></span> Publicados no Site
+                        </h3>
+                        <span id="count-publicados" class="bg-slate-800 text-slate-400 text-xs font-bold px-2 py-1 rounded-full">0</span>
+                    </div>
+                    <div id="list-publicados" class="space-y-4 pb-10"></div>
+                </section>
+            </div>
 
-            // Mostrar erro global
-            function showGlobalError(message) {
-                globalErrorText.textContent = message;
-                globalErrorMsg.classList.remove('hidden');
-            }
-            
-            // Ocultar erro global
-            function hideGlobalError() {
-                globalErrorMsg.classList.add('hidden');
-            }
+            <div id="tab-lixeira" class="hidden">
+                <div class="flex items-center justify-between mb-6">
+                    <h3 class="text-slate-100 font-bold text-xl flex items-center gap-2">🗑️ Artigos Descartados</h3>
+                    <button onclick="loadLixeira()" class="text-sm text-blue-400 hover:underline">Recarregar Lixeira</button>
+                </div>
+                <div id="list-lixeira" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4"></div>
+            </div>
+        </div>
+    </main>
 
-            // Atualiza a hora da última atualização
-            function updateTimestamp() {
-                const now = new Date();
-                lastUpdated.textContent = `Listas atualizadas às ${now.toLocaleTimeString('pt-BR')}`;
-            }
+    <div id="modal-gerar" class="fixed inset-0 bg-black/80 hidden flex items-center justify-center z-50 backdrop-blur-sm">
+        <div class="bg-slate-800 p-6 rounded-xl w-96 border border-slate-700 shadow-2xl transform transition-all scale-100">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-xl font-bold text-white">Gerar Conteúdo com IA</h3>
+                <button onclick="fecharModal()" class="text-slate-400 hover:text-white text-xl">&times;</button>
+            </div>
+            <p class="text-slate-400 text-sm mb-6">Escolha o escopo da análise:</p>
+            <div class="space-y-3 mb-8">
+                <label class="flex items-center gap-3 p-4 bg-slate-900 border border-slate-700 rounded-lg cursor-pointer hover:border-purple-500 transition-colors group">
+                    <input type="radio" name="scope" value="all" checked class="accent-purple-500 w-4 h-4" onchange="toggleSelect(false)">
+                    <div>
+                        <span class="text-white font-bold block group-hover:text-purple-400 transition-colors">Todas da Carteira</span>
+                        <span class="text-xs text-slate-500">Analisa as 5 principais ações</span>
+                    </div>
+                </label>
+                <label class="flex flex-col gap-3 p-4 bg-slate-900 border border-slate-700 rounded-lg cursor-pointer hover:border-purple-500 transition-colors group">
+                    <div class="flex items-center gap-3">
+                        <input type="radio" name="scope" value="single" class="accent-purple-500 w-4 h-4" onchange="toggleSelect(true)">
+                        <span class="text-white font-bold group-hover:text-purple-400 transition-colors">Apenas Uma Empresa</span>
+                    </div>
+                    <select id="select-ticker" disabled class="mt-1 w-full bg-slate-800 text-white text-sm border border-slate-600 rounded p-2 focus:border-purple-500 focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed">
+                        <option value="PETR4.SA">Petrobras (PETR4)</option>
+                        <option value="MGLU3.SA">Magazine Luiza (MGLU3)</option>
+                        <option value="VALE3.SA">Vale (VALE3)</option>
+                        <option value="ITUB4.SA">Itaú Unibanco (ITUB4)</option>
+                        <option value="WEGE3.SA">WEG (WEGE3)</option>
+                        <option value="BBAS3.SA">Banco do Brasil (BBAS3)</option>
+                    </select>
+                </label>
+            </div>
+            <div class="flex justify-end gap-3 pt-2 border-t border-slate-700">
+                <button onclick="fecharModal()" class="text-slate-400 hover:text-white px-4 py-2 text-sm font-medium">Cancelar</button>
+                <button onclick="dispararIA()" class="bg-purple-600 hover:bg-purple-500 text-white px-6 py-2 rounded-lg font-bold text-sm shadow-lg shadow-purple-900/20 flex items-center gap-2 transition-all hover:scale-105">
+                    🚀 Iniciar Agentes
+                </button>
+            </div>
+        </div>
+    </div>
 
-            // Cria um card de artigo
-            function createArticleCard(article, type) {
-                const card = articleTemplate.content.cloneNode(true).firstElementChild;
-                card.dataset.id = article.id;
-                card.querySelector('.article-title').textContent = article.titulo;
-                card.querySelector('.article-id').textContent = `ID: ${article.id}`;
-                card.querySelector('.article-ticker').textContent = `Ticker: ${article.acao_ticker || 'N/A'}`;
-                card.querySelector('.article-rec').textContent = `Rec: ${article.recomendacao || 'N/A'}`;
-                
-                // Formata a data de criação
-                try {
-                    const date = new Date(article.created_at);
-                    if (isNaN(date)) throw new Error('Invalid Date');
-                    card.querySelector('.article-date').textContent = `Criado em: ${date.toLocaleString('pt-BR')}`;
-                } catch (e) {
-                    card.querySelector('.article-date').textContent = `Criado em: Invalid Date`;
-                }
-                
-                // Preenche o conteúdo, tratando quebra de linhas
-                card.querySelector('.article-content').innerHTML = (article.conteudo || "").replace(/\n/g, '<br>');
-
-                const actionsContainer = card.querySelector('.article-actions');
-                
-                // Adiciona botões com base no tipo
-                if (type === 'rascunho') {
-                    const approveButton = document.createElement('button');
-                    approveButton.className = 'btn btn-green';
-                    approveButton.textContent = 'Aprovar';
-                    approveButton.onclick = (e) => handleAction(e, () => handleApprove(article.id));
-                    actionsContainer.appendChild(approveButton);
-                } else if (type === 'publicado') {
-                    const disapproveButton = document.createElement('button');
-                    // *** CORREÇÃO DO NOME DO BOTÃO AQUI ***
-                    disapproveButton.className = 'btn btn-yellow';
-                    disapproveButton.textContent = 'Desaprovar'; // <--- MUDADO DE "Voltar p/ Rascunho"
-                    disapproveButton.onclick = (e) => handleAction(e, () => handleDisapprove(article.id));
-                    actionsContainer.appendChild(disapproveButton);
-
-                    const deleteButton = document.createElement('button');
-                    deleteButton.className = 'btn btn-red';
-                    deleteButton.textContent = 'Excluir';
-                    deleteButton.onclick = () => showDeleteModal(article.id, article.titulo);
-                    actionsContainer.appendChild(deleteButton);
-                }
-
-                return card;
-            }
-
-            // Animação de remoção de card
-            function removeCard(card) {
-                if (!card) return;
-                card.style.transition = 'opacity 0.3s ease-out, transform 0.3s ease-out, height 0.3s ease-out';
-                card.style.opacity = '0';
-                card.style.transform = 'scale(0.95)';
-                card.style.height = `${card.offsetHeight}px`; // Prepara para animar a altura
-                setTimeout(() => {
-                    card.style.height = '0';
-                    card.style.margin = '0';
-                    card.style.padding = '0';
-                }, 100);
-                setTimeout(() => {
-                    card.remove();
-                }, 400); // Duração da animação de altura
-            }
-
-            // Busca RASCUNHOS
-            async function fetchRascunhos() {
-                rascunhosLoading.classList.remove('hidden');
-                rascunhosError.classList.add('hidden');
-                rascunhosList.innerHTML = '';
-                
-                try {
-                    const data = await fetchAPI(API_BASE_URL); // GET /api/artigos (o seu index() filtra por 'rascunho')
-                    if (data.data.length === 0) {
-                        rascunhosList.innerHTML = '<p class="text-gray-500 text-center">Nenhum rascunho pendente.</p>';
-                    } else {
-                        data.data.forEach(article => {
-                            rascunhosList.appendChild(createArticleCard(article, 'rascunho'));
-                        });
-                    }
-                } catch (error) {
-                    rascunhosError.classList.remove('hidden');
-                } finally {
-                    rascunhosLoading.classList.add('hidden');
-                }
-            }
-
-            // Busca PUBLICADOS
-            async function fetchPublicados() {
-                publicadosLoading.classList.remove('hidden');
-                publicadosError.classList.add('hidden');
-                publicadosList.innerHTML = '';
-
-                try {
-                    const data = await fetchAPI(`${API_BASE_URL}/publicados`); // GET /api/artigos/publicados
-                    if (data.data.length === 0) {
-                        publicadosList.innerHTML = '<p class="text-gray-500 text-center">Nenhum artigo publicado.</p>';
-                    } else {
-                        data.data.forEach(article => {
-                            publicadosList.appendChild(createArticleCard(article, 'publicado'));
-                        });
-                    }
-                } catch (error) {
-                    publicadosError.classList.remove('hidden');
-                } finally {
-                    publicadosLoading.classList.add('hidden');
-                }
-            }
-            
-            // Função principal para carregar tudo
-            async function loadAllData() {
-                hideGlobalError();
-                refreshButton.disabled = true;
-                refreshIcon.classList.add('animate-spin');
-                
-                await Promise.all([
-                    fetchRascunhos(),
-                    fetchPublicados()
-                ]);
-                
-                refreshButton.disabled = false;
-                refreshIcon.classList.remove('animate-spin');
-                updateTimestamp();
-            }
-
-            // --- Handlers de Ação ---
-
-            // Wrapper para botões de ação (mostrar loading)
-            async function handleAction(event, actionFunction) {
-                const button = event.target;
-                const originalText = button.textContent;
-                button.disabled = true;
-                button.textContent = 'Aguarde...';
-
-                await actionFunction();
-
-                // Não reativar o botão, pois o card será removido
-            }
-            
-            // Função para mostrar erro específico no card
-            function showCardError(articleId, message) {
-                const card = document.querySelector(`.article-card[data-id="${articleId}"]`);
-                if (card) {
-                    const errorMsg = card.querySelector('.article-error-message');
-                    errorMsg.textContent = message;
-                    errorMsg.classList.remove('hidden');
-                    // Oculta a mensagem após 3 segundos
-                    setTimeout(() => {
-                        errorMsg.classList.add('hidden');
-                    }, 3000);
-                }
-            }
-
-            async function handleApprove(id) {
-                const card = rascunhosList.querySelector(`.article-card[data-id="${id}"]`);
-                try {
-                    await fetchAPI(`${API_BASE_URL}/${id}/aprovar`, { method: 'POST' });
-                    removeCard(card); // Remove da lista de rascunhos
-                    await fetchPublicados(); // Recarrega só os publicados
-                } catch (error) {
-                    showCardError(id, `Erro ao aprovar: ${error.message}`);
-                    const button = card.querySelector('.btn-green');
-                    button.disabled = false;
-                    button.textContent = 'Aprovar';
-                }
-            }
-
-            async function handleDisapprove(id) {
-                const card = publicadosList.querySelector(`.article-card[data-id="${id}"]`);
-                try {
-                    await fetchAPI(`${API_BASE_URL}/${id}/desaprovar`, { method: 'POST' });
-                    removeCard(card); // Remove da lista de publicados
-                    await fetchRascunhos(); // Recarrega só os rascunhos
-                } catch (error) {
-                    showCardError(id, `Erro ao desaprovar: ${error.message}`);
-                    const button = card.querySelector('.btn-yellow');
-                    button.disabled = false;
-                    button.textContent = 'Desaprovar';
-                }
-            }
-
-            async function handleDelete(id) {
-                deleteModal.classList.add('hidden');
-                const card = publicadosList.querySelector(`.article-card[data-id="${id}"]`);
-                try {
-                    await fetchAPI(`${API_BASE_URL}/${id}`, { method: 'DELETE' });
-                    removeCard(card); // Remove da lista de publicados
-                } catch (error) {
-                    showCardError(id, `Erro ao excluir: ${error.message}`);
-                }
-            }
-
-            // --- Modal ---
-            function showDeleteModal(id, title) {
-                deleteModalTitle.textContent = title || "este artigo";
-                deleteModalConfirm.dataset.id = id;
-                deleteModal.classList.remove('hidden');
-            }
-
-            deleteModalCancel.onclick = () => deleteModal.classList.add('hidden');
-            deleteModalConfirm.onclick = () => {
-                const id = deleteModalConfirm.dataset.id;
-                if (id) {
-                    handleDelete(id);
-                }
-            };
-
-            // Event Listeners
-            refreshButton.addEventListener('click', loadAllData);
-            
-            // Carga Inicial
-            loadAllData();
-        });
-    </script>
+    <script src="js/dashboard.js"></script> 
 </body>
 </html>

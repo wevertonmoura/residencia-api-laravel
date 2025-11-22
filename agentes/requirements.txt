@@ -1,0 +1,5 @@
+requests
+yfinance
+python-dotenv
+google-generativeai
+flask

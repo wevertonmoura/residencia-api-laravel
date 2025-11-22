@@ -1,0 +1,27 @@
+/*
+ * Arquivo: styles/dashboard.css
+ * Responsabilidade: Estilos personalizados (Scrollbar, etc.)
+ * O restante do visual é gerenciado pelo Tailwind CSS.
+ */
+
+body { 
+    font-family: 'Inter', sans-serif; 
+}
+.hidden { 
+    display: none; 
+}
+
+/* Scrollbar personalizada para a área de conteúdo */
+::-webkit-scrollbar { 
+    width: 6px; 
+}
+::-webkit-scrollbar-track { 
+    background: #0f172a; /* Cor do fundo escuro */
+}
+::-webkit-scrollbar-thumb { 
+    background: #334155; /* Cor do "polegar" */
+    border-radius: 3px; 
+}
+::-webkit-scrollbar-thumb:hover { 
+    background: #475569; 
+}

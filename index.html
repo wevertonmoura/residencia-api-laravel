@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="pt-BR" class="bg-gray-50">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Invasores News | Inteligência Financeira</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Merriweather:wght@300;400;700&family=Inter:wght@400;600&display=swap" rel="stylesheet">
+    <style>
+        h1, h2, h3 { font-family: 'Merriweather', serif; }
+        body { font-family: 'Inter', sans-serif; }
+        .ticker-tape { animation: scroll 20s linear infinite; }
+        @keyframes scroll { 0% { transform: translateX(100%); } 100% { transform: translateX(-100%); } }
+    </style>
+</head>
+<body class="text-gray-800">
+
+    <nav class="bg-white border-b border-gray-200 sticky top-0 z-50">
+        <div class="max-w-6xl mx-auto px-4 h-16 flex justify-between items-center">
+            <div class="font-bold text-xl tracking-tighter">INVASORES<span class="text-blue-600">.NEWS</span></div>
+            <div class="hidden md:flex gap-6 text-sm font-medium text-gray-600">
+                <a href="#" class="hover:text-blue-600">Mercado</a>
+                <a href="#" class="hover:text-blue-600">Tecnologia</a>
+                <a href="#" class="hover:text-blue-600">Commodities</a>
+            </div>
+            <a href="painel.html" class="text-xs font-bold bg-gray-900 text-white px-3 py-2 rounded hover:bg-gray-700">Área do Editor</a>
+        </div>
+    </nav>
+
+    <header class="bg-white border-b border-gray-200 py-12">
+        <div class="max-w-4xl mx-auto px-4 text-center">
+            <span class="text-blue-600 font-bold text-xs tracking-widest uppercase mb-2 block">Relatório Diário de IA</span>
+            <h1 class="text-3xl md:text-5xl font-bold text-gray-900 mb-4 leading-tight">
+                Análise de Mercado em Tempo Real
+            </h1>
+            <p class="text-lg text-gray-500 leading-relaxed">
+                Nossos agentes autônomos processam milhares de dados financeiros para entregar insights precisos sobre as maiores empresas da bolsa.
+            </p>
+        </div>
+    </header>
+
+    <main class="max-w-6xl mx-auto px-4 py-12">
+        <div id="news-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+            <div class="col-span-full text-center py-20">
+                <div class="animate-spin w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full mx-auto mb-4"></div>
+                <p class="text-gray-400">Carregando as últimas análises...</p>
+            </div>
+        </div>
+    </main>
+
+    <footer class="bg-gray-900 text-gray-400 py-12 text-center text-sm">
+        <p>&copy; 2025 Invasores Technology. Powered by Gemini & Laravel.</p>
+    </footer>
+
+    <script>
+        const API_URL = 'http://127.0.0.1/api/artigos/publicados';
+
+        async function loadNews() {
+            const grid = document.getElementById('news-grid');
+            try {
+                const res = await fetch(API_URL);
+                const json = await res.json();
+                
+                if (json.data.length === 0) {
+                    grid.innerHTML = '<p class="col-span-full text-center">Nenhuma notícia publicada ainda.</p>';
+                    return;
+                }
+
+                grid.innerHTML = ''; // Limpa loading
+
+                json.data.forEach(article => {
+                    // Lógica de cor da recomendação
+                    let colorClass = 'bg-gray-100 text-gray-600';
+                    if(article.recomendacao.includes('Compra')) colorClass = 'bg-green-100 text-green-800';
+                    if(article.recomendacao.includes('Venda')) colorClass = 'bg-red-100 text-red-800';
+
+                    const html = `
+                        <article class="flex flex-col h-full border border-gray-100 bg-white rounded-lg shadow-sm hover:shadow-md transition-shadow overflow-hidden">
+                            <div class="h-2 bg-gray-900"></div>
+                            <div class="p-6 flex-1 flex flex-col">
+                                <div class="flex justify-between items-center mb-4">
+                                    <span class="font-bold text-xs text-gray-500 tracking-wider">${article.ticker}</span>
+                                    <span class="${colorClass} text-[10px] font-bold px-2 py-1 rounded uppercase">${article.recomendacao}</span>
+                                </div>
+                                <h2 class="text-xl font-bold text-gray-900 mb-3 leading-snug hover:text-blue-600 cursor-pointer">
+                                    ${article.titulo}
+                                </h2>
+                                <p class="text-gray-600 text-sm leading-relaxed mb-6 flex-1">
+                                    ${article.conteudo.substring(0, 150)}...
+                                </p>
+                                <div class="flex items-center justify-between pt-4 border-t border-gray-100">
+                                    <span class="text-xs text-gray-400">${new Date(article.updated_at).toLocaleDateString('pt-BR')}</span>
+                                    <button class="text-blue-600 font-bold text-sm hover:underline">Ler Completo &rarr;</button>
+                                </div>
+                            </div>
+                        </article>
+                    `;
+                    grid.innerHTML += html;
+                });
+
+            } catch (e) {
+                grid.innerHTML = '<p class="col-span-full text-center text-red-500">Erro ao carregar notícias.</p>';
+            }
+        }
+
+        loadNews();
+    </script>
+</body>
+</html>

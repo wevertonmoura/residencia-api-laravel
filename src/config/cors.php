@@ -4,25 +4,27 @@ return [
 
     /*
     |--------------------------------------------------------------------------
-    | Configurações de CORS (Cross-Origin Resource Sharing)
+    | Configuração CORS (Versão Específica para VS Code)
     |--------------------------------------------------------------------------
-    |
-    | Configure aqui as permissões de acesso da sua API.
-    | O 'fruitcake/laravel-cors' usa estas configurações.
-    |
     */
 
-    'paths' => ['api/*'], // Aplica o CORS a todas as rotas da sua API
+    // Permite acesso a qualquer rota
+    'paths' => ['*', 'api/*'],
 
-    'allowed_methods' => ['*'], // Permite todos os métodos (GET, POST, PUT, DELETE)
+    // Permite todos os métodos (GET, POST, etc)
+    'allowed_methods' => ['*'],
 
-    'allowed_origins' => ['*'], // <-- ESTA É A LINHA MAIS IMPORTANTE
-                              // Permite que QUALQUER site (incluindo o seu painel)
-                              // faça pedidos à sua API.
+    // AQUI ESTÁ A MUDANÇA: 
+    // Adicionamos explicitamente o endereço do seu Front-end
+    'allowed_origins' => [
+        '*',                      // Tenta liberar geral
+        'http://127.0.0.1:5500',  // Libera seu VS Code (IP)
+        'http://localhost:5500',  // Libera seu VS Code (Nome)
+    ],
 
     'allowed_origins_patterns' => [],
 
-    'allowed_headers' => ['*'], // Permite todos os cabeçalhos
+    'allowed_headers' => ['*'],
 
     'exposed_headers' => [],
 

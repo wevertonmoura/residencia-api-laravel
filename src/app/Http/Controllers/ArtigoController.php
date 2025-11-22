@@ -2,12 +2,12 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Artigo; 
+use App\Models\Artigo;
 use App\Http\Resources\ArtigoResource;
-use App\Http\Requests\StoreArtigoRequest;
-use App\Http\Requests\UpdateArtigoRequest;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Http\Request; // Não se esqueça de importar Request!
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Http; // <--- NOVO: Necessário para chamar o Python
 
 class ArtigoController extends Controller
 {
@@ -16,75 +16,160 @@ class ArtigoController extends Controller
      */
     public function index(): JsonResponse
     {
-        // Filtra pelo status 'rascunho'
-        $artigos = Artigo::where('status', 'rascunho')->get(); 
+        $artigos = Artigo::where('status', 'rascunho')
+                         ->orderBy('created_at', 'desc')
+                         ->get();
+                         
         return ArtigoResource::collection($artigos)->response();
     }
 
-    // --- MÉTODOS NOVOS PARA O PAINEL V2 ---
-
     /**
-     * MÉTODO NOVO: Listar artigos publicados.
+     * MÉTODO CRUCIAL: Onde o Python entrega o artigo.
      */
+    public function store(Request $request): JsonResponse
+    {
+        Log::info('🤖 API (store) recebeu requisição do Python:', $request->all());
+
+        try {
+            $artigo = Artigo::create([
+                'titulo'       => $request->titulo,
+                'conteudo'     => $request->conteudo,
+                'recomendacao' => $request->recomendacao,
+                // Garante compatibilidade de nomes
+                'ticker'       => $request->ticker ?? $request->acao_ticker, 
+                'status'       => 'rascunho'
+            ]);
+
+            Log::info('✅ Artigo salvo com sucesso! ID: ' . $artigo->id);
+            return (new ArtigoResource($artigo))->response()->setStatusCode(201);
+
+        } catch (\Exception $e) {
+            Log::error('❌ Erro ao salvar artigo no Banco: ' . $e->getMessage());
+            return response()->json(['error' => 'Falha ao salvar: ' . $e->getMessage()], 500);
+        }
+    }
+
+    // --- MÉTODOS DE PUBLICAÇÃO ---
+
     public function indexPublicados(): JsonResponse
     {
-        // Filtra pelo status 'publicado'
-        $artigos = Artigo::where('status', 'publicado')->get(); 
+        $artigos = Artigo::where('status', 'publicado')
+                         ->orderBy('updated_at', 'desc')
+                         ->get();
         return ArtigoResource::collection($artigos)->response();
     }
 
-    /**
-     * MÉTODO NOVO: Aprovar um artigo (muda status para 'publicado').
-     */
     public function aprovar(Request $request, $id): JsonResponse
     {
         $artigo = Artigo::find($id);
-        if (!$artigo) {
-            return response()->json(['message' => 'Artigo não encontrado'], 404);
-        }
+        if (!$artigo) return response()->json(['message' => 'Não encontrado'], 404);
 
         $artigo->status = 'publicado';
         $artigo->save();
         return (new ArtigoResource($artigo))->response();
     }
 
-    /**
-     * MÉTODO NOVO: Desaprovar um artigo (muda status para 'rascunho').
-     */
     public function desaprovar(Request $request, $id): JsonResponse
     {
         $artigo = Artigo::find($id);
-        if (!$artigo) {
-            return response()->json(['message' => 'Artigo não encontrado'], 404);
-        }
+        if (!$artigo) return response()->json(['message' => 'Não encontrado'], 404);
 
         $artigo->status = 'rascunho';
         $artigo->save();
         return (new ArtigoResource($artigo))->response();
     }
 
-    // --- MÉTODOS PADRÃO (Ajustados para o Painel) ---
+    // --- NOVOS MÉTODOS: LIXEIRA & GESTÃO ---
 
-    public function destroy(Artigo $artigo): JsonResponse
+    /**
+     * Lista itens que foram descartados
+     */
+    public function indexLixeira(): JsonResponse
     {
-        // O método destroy já é chamado pelo Route::apiResource
-        $artigo->delete();
-        return response()->json(null, 204);
+        $artigos = Artigo::where('status', 'lixeira')
+                         ->orderBy('updated_at', 'desc')
+                         ->get();
+        return ArtigoResource::collection($artigos)->response();
+    }
+
+    /**
+     * Soft Delete: Move para a lixeira em vez de apagar
+     */
+    public function moverParaLixeira($id): JsonResponse
+    {
+        $artigo = Artigo::find($id);
+        if (!$artigo) return response()->json(['message' => 'Não encontrado'], 404);
+        
+        $artigo->status = 'lixeira';
+        $artigo->save();
+        return response()->json(['message' => 'Movido para lixeira']);
+    }
+
+    /**
+     * Restaura da lixeira para rascunho
+     */
+    public function restaurar($id): JsonResponse
+    {
+        $artigo = Artigo::find($id);
+        if (!$artigo) return response()->json(['message' => 'Não encontrado'], 404);
+
+        $artigo->status = 'rascunho';
+        $artigo->save();
+        return response()->json(['message' => 'Restaurado com sucesso']);
     }
     
-    // Deixamos os métodos show, store, update aqui se você precisar deles...
+    /**
+     * Hard Delete: Apaga do banco de dados para sempre
+     */
+    public function excluirPermanente($id): JsonResponse
+    {
+        $artigo = Artigo::find($id);
+        if ($artigo) {
+            $artigo->delete();
+        }
+        return response()->json(null, 204);
+    }
+
+    // --- NOVO MÉTODO: GATILHO DA IA (CHAMA O FLASK) ---
+
+    public function dispararIA(Request $request): JsonResponse
+    {
+        // Recebe { tickers: ['PETR4.SA'] } ou { tickers: 'all' } do Front-end
+        $payload = $request->all();
+
+        try {
+            // Chama o container Python na porta 5000
+            // 'invasores_agentes' é o nome do serviço no docker-compose
+      
+            $response = Http::post('http://172.18.0.4:5000/gerar', $payload);
+            
+            return response()->json([
+                'message' => 'Solicitação enviada aos agentes!',
+                'python_response' => $response->json()
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Erro ao chamar Python Flask: ' . $e->getMessage());
+            return response()->json(['error' => 'Erro de comunicação com os Agentes. Verifique se o container Python está rodando.'], 500);
+        }
+    }
+
+    // --- MÉTODOS PADRÃO ---
+
     public function show(Artigo $artigo): JsonResponse
     {
         return (new ArtigoResource($artigo))->response();
     }
-    public function store(StoreArtigoRequest $request): JsonResponse
+
+    public function update(Request $request, Artigo $artigo): JsonResponse
     {
-        $artigo = Artigo::create($request->validated());
-        return (new ArtigoResource($artigo))->response()->setStatusCode(201);
-    }
-    public function update(UpdateArtigoRequest $request, Artigo $artigo): JsonResponse
-    {
-        $artigo->update($request->validated());
+        $artigo->update($request->all());
         return (new ArtigoResource($artigo))->response();
+    }
+    
+    // Mantemos o destroy padrão caso alguma rota antiga use
+    public function destroy(Artigo $artigo): JsonResponse
+    {
+        $artigo->delete();
+        return response()->json(null, 204);
     }
 }

@@ -1,4 +1,5 @@
 services:
+  # --- SEU LARAVEL (JÁ EXISTENTE) ---
   app:
     build:
       context: .
@@ -9,16 +10,12 @@ services:
       - "80:80"
       - "443:443"
     volumes:
-      # 1. Mapeia o seu projeto local para o contentor
       - .:/var/www/app/:cached
-      
-      # 2. (A CORREÇÃO CRUCIAL) Cria um volume nomeado RÁPIDO para a pasta 'vendor'
-      #    Isto resolve os problemas de cache (404) e desempenho (idioma)
       - vendor_cache:/var/www/app/src/vendor
-      
     networks:
       - app
       
+  # --- SEU BANCO DE DADOS (JÁ EXISTENTE) ---
   db:
     platform: linux/x86_64
     image: mysql:5.7
@@ -34,15 +31,33 @@ services:
     expose:
       - "3306"
     volumes:
-      # Mapeia a pasta local ./db para os dados do MySQL
       - ./db/:/var/lib/mysql
     networks:
       - app
 
+  # --- NOVO SERVIÇO: AGENTES PYTHON (ADICIONADO AGORA) ---
+  agentes_python:
+    build:
+      context: ./agentes
+      dockerfile: Dockerfile
+    container_name: invasores_agentes
+    # MUDANÇA: Agora rodamos o server.py, não mais o main.py
+    command: python server.py 
+    ports:
+      - "5000:5000" # Para podermos testar se precisarmos
+    volumes:
+      - ./agentes:/app
+    networks:
+      - app
+    depends_on:
+      - app
+    env_file:
+      - ./agentes/.env
+
+# --- REDES E VOLUMES ---
 networks:
   app:
     driver: bridge
 
-# Define o volume nomeado 'vendor_cache' que usámos acima
 volumes:
   vendor_cache:

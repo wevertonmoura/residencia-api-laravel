@@ -17,7 +17,7 @@ class Artigo extends Model
     protected $fillable = [
         'titulo',
         'conteudo',
-        'acao_ticker',
+        'ticker',       // <--- CORRIGIDO AQUI (Era 'acao_ticker')
         'recomendacao',
         'status',
     ];

@@ -1,10 +1,55 @@
-# Pasta do banco de dados do Docker
-/db/
+# =======================================================
+# 1. AMBIENTES E DEPENDÊNCIAS (Para todas as linguagens)
+# =======================================================
 
-# Caches do Python
-agentes/__pycache__/
+# PHP VENDOR (Dentro da pasta src/)
+/src/vendor/
+
+# PYTHON VENV (Seja em agentes/ ou na raiz)
+/agentes/venv/
+/venv/
+
+# NODE/FRONTEND (Se usar npm/yarn)
+/src/node_modules/
+/node_modules/
+
+# ARQUIVOS DE CACHE E INSTALAÇÃO LOCAL
+composer.lock
+npm-debug.log
+yarn-error.log
+
+
+# =======================================================
+# 2. OUTPUTS DA APLICAÇÃO E DADOS SENSÍVEIS
+# =======================================================
+
+# ARQUIVOS DE DADOS E CONFIGURAÇÃO SECRETA
+.env
+.env.testing
+/db/             # Dados brutos do MySQL (pasta do Docker)
+
+# CACHE E LOGS DO LARAVEL
+/src/storage/
+/src/bootstrap/cache/
+/src/*.log
+
+# OUTPUTS DE BUILD DO FRONT-END (Assets)
+/src/public/build/
+/src/public/hot
+
+# =======================================================
+# 3. ARQUIVOS TEMPORÁRIOS E OS
+# =======================================================
+
+# PYTHON CACHE E TEMPORÁRIOS
+__pycache__/
 *.pyc
+*.o
+*.so
+/agentes/__pycache__/
+/agentes/.ipynb_checkpoints/ # Notebooks temporários
 
-# Arquivos do OS
+# IDE E S.O.
 .DS_Store
 Thumbs.db
+/src/.vscode/

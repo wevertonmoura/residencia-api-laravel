@@ -15,21 +15,27 @@ class CreateArtigosTable extends Migration
     {
         Schema::create('artigos', function (Blueprint $table) {
             $table->id();
-            $table->string('titulo', 255); // O título do artigo
-            $table->text('conteudo'); // O texto completo gerado pela IA "Key"
-            $table->string('acao_ticker', 20); // O ticker da ação (ex: "PETR4.SA")
-            $table->string('recomendacao', 50); // "Comprar", "Vender", "Manter"
+            $table->string('titulo', 255); 
+            $table->text('conteudo'); 
             
-            // Esta é a coluna do "Fator Humano"
-            $table->string('status', 50)->default('rascunho'); // 'rascunho', 'aprovado', 'rejeitado'
+            // --- MUDANÇA AQUI ---
+            // Mudamos de 'acao_ticker' para 'ticker' para padronizar com o Python e o Model
+            $table->string('ticker', 20); 
+            // --------------------
+
+            $table->string('recomendacao', 50); 
             
-            $table->timestamps(); // created_at e updated_at
+            // Coluna do Fator Humano
+            $table->string('status', 50)->default('rascunho'); 
+            
+            $table->timestamps(); 
         });
     }
 
     /**
      * Reverse the migrations.
      *
+     * @return void
      */
     public function down()
     {
