@@ -1,136 +1,236 @@
 <!DOCTYPE html>
-<html lang="pt-BR" class="h-full bg-slate-900">
+<html lang="pt-BR" class="h-full bg-slate-950 antialiased">
 <head>
-    <meta charset="UTF-8">
-    <title>Painel Admin | Jornal do Commercio</title>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>AlphaNews AI | Painel Administrativo Sênior</title>
+    <link rel="icon" type="image/png" href="https://upload.wikimedia.org/wikipedia/commons/thumb/6/65/Jornal_do_Commercio_Recife_logo.svg/32px-Jornal_do_Commercio_Recife_logo.svg.png">
+
     <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
-    
-    <link rel="stylesheet" href="styles/dashboard.css">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: { sans: ['Inter', 'sans-serif'] },
+                    colors: {
+                        brand: { 500: '#6366f1', 600: '#4f46e5' }, 
+                        compra: '#10B981', 
+                        venda: '#EF4444', 
+                        neutro: '#F59E0B' 
+                    }
+                }
+            }
+        }
+    </script>
 
-    </head>
-<body class="h-full text-slate-300 flex">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet" />
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
 
-    <aside class="w-64 bg-slate-950 border-r border-slate-800 flex flex-col fixed h-full md:relative z-20">
-        
-        <div class="p-6 border-b border-slate-800 flex flex-col gap-4">
-            <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/6/65/Jornal_do_Commercio_Recife_logo.svg/2560px-Jornal_do_Commercio_Recife_logo.svg.png"
-                 alt="Jornal do Commercio"
-                 class="h-8 w-auto object-contain brightness-0 invert opacity-90 self-start">
-            
-            <div class="flex items-center gap-2">
-                <div class="h-px w-4 bg-slate-700"></div>
-                <span class="text-[10px] uppercase tracking-widest text-slate-500 font-bold">
-                    Sistema Invasores.IA
-                </span>
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #334155; border-radius: 3px; }
+        ::-webkit-scrollbar-thumb:hover { background: #475569; }
+    </style>
+</head>
+
+<body class="h-full text-slate-300 flex overflow-hidden bg-slate-950 selection:bg-brand-500 selection:text-white">
+
+    <aside class="w-72 bg-slate-900 border-r border-slate-800 flex flex-col z-20 shadow-2xl transition-all duration-300">
+        <div class="h-16 flex items-center gap-3 px-6 border-b border-slate-800 bg-slate-900/50">
+            <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-brand-500 to-purple-600 flex items-center justify-center shadow-lg shadow-brand-500/20">
+                <i class="ph-bold ph-newspaper text-white text-lg"></i>
+            </div>
+            <div>
+                <h1 class="font-bold text-slate-100 tracking-tight leading-tight">AlphaNews AI</h1>
+                <span class="text-[10px] font-medium text-slate-500 uppercase tracking-wider block">Admin Console</span>
             </div>
         </div>
 
-        <nav class="flex-1 px-4 space-y-2 mt-6">
-            <button onclick="showTab('painel')" class="w-full flex items-center gap-3 px-4 py-3 bg-blue-600/10 text-blue-400 rounded-xl border border-blue-600/20 text-left transition-colors hover:bg-blue-600/20 font-medium">
-                📊 Painel Principal
+        <nav class="flex-1 px-4 py-6 space-y-1 overflow-y-auto">
+            <p class="px-4 text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-2">Gerenciamento</p>
+            
+            <button onclick="showTab('painel')" id="nav-painel" class="w-full flex items-center gap-3 px-4 py-2.5 text-sm font-medium rounded-lg text-brand-500 bg-brand-500/10 border border-brand-500/20 transition-all group">
+                <i class="ph-duotone ph-chart-pie-slice text-lg"></i>
+                Visão Geral
+                <span class="ml-auto w-1.5 h-1.5 rounded-full bg-brand-500"></span>
             </button>
-            <button onclick="showTab('lixeira')" class="w-full flex items-center gap-3 px-4 py-3 text-slate-400 hover:bg-slate-800 rounded-xl text-left transition-colors font-medium">
-                🗑️ Lixeira / Excluídos
+
+            <button onclick="showTab('lixeira')" id="nav-lixeira" class="w-full flex items-center gap-3 px-4 py-2.5 text-sm font-medium rounded-lg text-slate-400 hover:text-slate-100 hover:bg-slate-800 transition-all group">
+                <i class="ph-duotone ph-trash text-lg group-hover:text-red-400 transition-colors"></i>
+                Lixeira
             </button>
-            <div class="pt-4 mt-4 border-t border-slate-800">
-                <a href="index.html" target="_blank" class="w-full flex items-center gap-3 px-4 py-3 text-slate-400 hover:text-white hover:bg-slate-800 rounded-xl transition-colors font-medium">
-                    🌍 Ver Site Público
-                </a>
-            </div>
+
+            <div class="my-6 border-t border-slate-800"></div>
+
+            <p class="px-4 text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-2">Sistema</p>
+            <a href="/" target="_blank" class="w-full flex items-center gap-3 px-4 py-2.5 text-sm font-medium rounded-lg text-slate-400 hover:text-slate-100 hover:bg-slate-800 transition-all">
+                <i class="ph-duotone ph-globe text-lg"></i>
+                Ver Portal Público
+            </a>
         </nav>
 
-        <div class="p-4 bg-slate-900/50 text-center border-t border-slate-800">
-            <p class="text-[10px] text-slate-600">Desenvolvido para</p>
-            <p class="text-xs font-bold text-slate-500">Jornal do Commercio</p>
+        <div class="p-4 border-t border-slate-800 bg-slate-900/50">
+            <div class="flex items-center gap-3 p-2 rounded-lg hover:bg-slate-800 transition cursor-pointer">
+                <img src="https://ui-avatars.com/api/?name=JC&background=0f172a&color=cbd5e1" class="w-9 h-9 rounded-full border border-slate-700">
+                <div class="flex flex-col min-w-0">
+                    <span class="text-sm font-semibold text-slate-200 truncate">Jornal do Commercio</span>
+                    <span class="text-xs text-slate-500 truncate">Sessão Ativa</span>
+                </div>
+            </div>
         </div>
     </aside>
 
-    <main class="flex-1 flex flex-col h-screen bg-slate-900 overflow-hidden relative">
-        <header class="h-16 border-b border-slate-800 flex items-center justify-between px-6 bg-slate-900/95 backdrop-blur z-10">
-            <h2 id="page-title" class="text-lg font-semibold text-white">Visão Geral</h2>
-            <div class="flex gap-3">
-                <button onclick="abrirModalGerar()" class="bg-purple-600 hover:bg-purple-500 text-white px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-2 transition-all shadow-lg shadow-purple-900/20">
-                    ✨ Gerar Novos Artigos
-                </button>
-                <button onclick="loadAll()" class="bg-slate-800 hover:bg-slate-700 text-slate-200 px-4 py-2 rounded-lg text-sm border border-slate-700 transition-colors flex items-center gap-2">
+    <main class="flex-1 flex flex-col h-screen relative min-w-0">
+        
+        <header class="h-16 border-b border-slate-800 bg-slate-950/80 backdrop-blur-md flex items-center justify-between px-8 z-10 sticky top-0">
+            <div class="flex items-center gap-4">
+                <h2 id="page-title" class="text-lg font-semibold text-slate-100 flex items-center gap-2">
+                    <i class="ph-duotone ph-squares-four text-slate-500"></i>
+                    Dashboard Financeiro
+                </h2>
+            </div>
+
+            <div class="flex items-center gap-3">
+                <button onclick="loadAll()" class="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 text-sm font-medium rounded-lg border border-slate-700 transition flex items-center gap-2 active:scale-95">
+                    <i class="ph-bold ph-arrows-clockwise"></i>
                     Atualizar
+                </button>
+
+                <button onclick="abrirModalGerar()" class="px-4 py-2 bg-brand-600 hover:bg-brand-500 text-white text-sm font-semibold rounded-lg shadow-lg shadow-brand-600/20 transition flex items-center gap-2 active:scale-95 hover:-translate-y-0.5 transform">
+                    <i class="ph-bold ph-sparkle"></i>
+                    Gerar com IA
                 </button>
             </div>
         </header>
 
-        <div class="flex-1 overflow-y-auto p-6 relative">
-            <div id="global-loader" class="hidden absolute inset-0 bg-slate-900/50 z-50 flex items-center justify-center backdrop-blur-sm">
-                <div class="animate-spin w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full"></div>
-            </div>
+        <div class="flex-1 overflow-y-auto p-8 relative custom-scrollbar">
 
-            <div id="tab-painel" class="grid grid-cols-1 xl:grid-cols-2 gap-8">
-                <section class="flex flex-col h-full">
-                    <div class="flex items-center justify-between mb-4 sticky top-0 bg-slate-900 py-2 z-10">
-                        <h3 class="text-slate-100 font-bold flex items-center gap-2">
-                            <span class="w-2.5 h-2.5 bg-yellow-500 rounded-full animate-pulse"></span> Rascunhos Pendentes
-                        </h3>
-                        <span id="count-rascunhos" class="bg-slate-800 text-slate-400 text-xs font-bold px-2 py-1 rounded-full">0</span>
+            <div id="global-loader" class="hidden absolute inset-0 bg-slate-950/60 backdrop-blur-sm z-50 flex flex-col items-center justify-center transition-all">
+                <div class="relative">
+                    <div class="w-12 h-12 rounded-full border-4 border-slate-700 border-t-brand-500 animate-spin"></div>
+                    <div class="absolute inset-0 flex items-center justify-center">
+                        <i class="ph-fill ph-robot text-brand-500 text-xs animate-pulse"></i>
                     </div>
-                    <div id="list-rascunhos" class="space-y-4 pb-10"></div>
-                </section>
-
-                <section class="flex flex-col h-full">
-                    <div class="flex items-center justify-between mb-4 sticky top-0 bg-slate-900 py-2 z-10">
-                        <h3 class="text-slate-100 font-bold flex items-center gap-2">
-                            <span class="w-2.5 h-2.5 bg-green-500 rounded-full"></span> Publicados no Site
-                        </h3>
-                        <span id="count-publicados" class="bg-slate-800 text-slate-400 text-xs font-bold px-2 py-1 rounded-full">0</span>
-                    </div>
-                    <div id="list-publicados" class="space-y-4 pb-10"></div>
-                </section>
-            </div>
-
-            <div id="tab-lixeira" class="hidden">
-                <div class="flex items-center justify-between mb-6">
-                    <h3 class="text-slate-100 font-bold text-xl flex items-center gap-2">🗑️ Artigos Descartados</h3>
-                    <button onclick="loadLixeira()" class="text-sm text-blue-400 hover:underline">Recarregar Lixeira</button>
                 </div>
-                <div id="list-lixeira" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4"></div>
+                <p class="mt-4 text-sm font-medium text-brand-400 animate-pulse">Processando dados...</p>
             </div>
+
+            <div id="tab-painel" class="grid grid-cols-1 xl:grid-cols-2 gap-8 animate-fade-in">
+                
+                <section> <header class="flex items-center justify-between sticky top-0 bg-slate-950/95 backdrop-blur py-2 z-10 border-b border-dashed border-slate-800/50 pb-4">
+                        <div class="flex items-center gap-2 text-slate-100">
+                            <span class="flex h-2.5 w-2.5 relative">
+                                <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-yellow-400 opacity-75"></span>
+                                <span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-yellow-500"></span>
+                            </span>
+                            <h3 class="font-bold">🟡 Pendentes de Aprovação</h3>
+                        </div>
+                        <span id="count-rascunhos" class="bg-slate-800 text-yellow-400 text-xs font-bold px-2.5 py-1 rounded-md border border-slate-700">0</span>
+                    </header>
+                    
+                    <div id="list-rascunhos" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-1 gap-4 py-4 min-h-[200px]">
+                    </div>
+                </section>
+
+                <section> <header class="flex items-center justify-between sticky top-0 bg-slate-950/95 backdrop-blur py-2 z-10 border-b border-dashed border-slate-800/50 pb-4">
+                        <div class="flex items-center gap-2 text-slate-100">
+                            <span class="w-2.5 h-2.5 bg-emerald-500 rounded-full shadow-[0_0_12px_rgba(16,185,129,0.4)]"></span>
+                            <h3 class="font-bold">🟢 Publicados no Portal</h3>
+                        </div>
+                        <span id="count-publicados" class="bg-slate-800 text-emerald-400 text-xs font-bold px-2.5 py-1 rounded-md border border-slate-700">0</span>
+                    </header>
+                    
+                    <div id="list-publicados" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-1 gap-4 py-4">
+                    </div>
+                </section>
+            </div>
+            <div id="tab-lixeira" class="hidden">
+                <div id="list-lixeira" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+                    </div>
+            </div>
+
         </div>
     </main>
 
-    <div id="modal-gerar" class="fixed inset-0 bg-black/80 hidden flex items-center justify-center z-50 backdrop-blur-sm">
-        <div class="bg-slate-800 p-6 rounded-xl w-96 border border-slate-700 shadow-2xl transform transition-all scale-100">
-            <div class="flex justify-between items-center mb-4">
-                <h3 class="text-xl font-bold text-white">Gerar Conteúdo com IA</h3>
-                <button onclick="fecharModal()" class="text-slate-400 hover:text-white text-xl">&times;</button>
-            </div>
-            <p class="text-slate-400 text-sm mb-6">Escolha o escopo da análise:</p>
-            <div class="space-y-3 mb-8">
-                <label class="flex items-center gap-3 p-4 bg-slate-900 border border-slate-700 rounded-lg cursor-pointer hover:border-purple-500 transition-colors group">
-                    <input type="radio" name="scope" value="all" checked class="accent-purple-500 w-4 h-4" onchange="toggleSelect(false)">
-                    <div>
-                        <span class="text-white font-bold block group-hover:text-purple-400 transition-colors">Todas da Carteira</span>
-                        <span class="text-xs text-slate-500">Analisa as 5 principais ações</span>
-                    </div>
-                </label>
-                <label class="flex flex-col gap-3 p-4 bg-slate-900 border border-slate-700 rounded-lg cursor-pointer hover:border-purple-500 transition-colors group">
+    <div id="modal-gerar" class="fixed inset-0 z-50 hidden" onclick="fecharModal()">
+        <div class="absolute inset-0 bg-slate-950/80 backdrop-blur-sm transition-opacity"></div>
+        <div class="absolute inset-0 flex items-center justify-center p-4">
+            <div class="bg-slate-900 border border-slate-700 rounded-2xl shadow-2xl w-full max-w-md transform transition-all scale-100 overflow-hidden" onclick="event.stopPropagation()">
+                
+                <div class="px-6 py-5 border-b border-slate-800 flex justify-between items-center bg-slate-900">
                     <div class="flex items-center gap-3">
-                        <input type="radio" name="scope" value="single" class="accent-purple-500 w-4 h-4" onchange="toggleSelect(true)">
-                        <span class="text-white font-bold group-hover:text-purple-400 transition-colors">Apenas Uma Empresa</span>
+                        <div class="p-2 bg-brand-500/10 rounded-lg">
+                            <i class="ph-duotone ph-robot text-brand-500 text-xl"></i>
+                        </div>
+                        <div>
+                            <h3 class="text-lg font-bold text-white">Comandar Agentes</h3>
+                            <p class="text-xs text-slate-500">Júlia, Pedro e Key aguardam ordens.</p>
+                        </div>
                     </div>
-                    <select id="select-ticker" disabled class="mt-1 w-full bg-slate-800 text-white text-sm border border-slate-600 rounded p-2 focus:border-purple-500 focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed">
-                        <option value="PETR4.SA">Petrobras (PETR4)</option>
-                        <option value="MGLU3.SA">Magazine Luiza (MGLU3)</option>
-                        <option value="VALE3.SA">Vale (VALE3)</option>
-                        <option value="ITUB4.SA">Itaú Unibanco (ITUB4)</option>
-                        <option value="WEGE3.SA">WEG (WEGE3)</option>
-                        <option value="BBAS3.SA">Banco do Brasil (BBAS3)</option>
-                    </select>
-                </label>
+                    <button onclick="fecharModal()" class="text-slate-400 hover:text-white transition rounded-lg p-1 hover:bg-slate-800">
+                        <i class="ph-bold ph-x text-lg"></i>
+                    </button>
+                </div>
+
+                <div class="p-6 space-y-4">
+                    <label class="flex items-start gap-4 p-4 rounded-xl border border-slate-700 cursor-pointer transition-all hover:bg-slate-800 hover:border-brand-500/50 group has-[:checked]:bg-brand-500/5 has-[:checked]:border-brand-500 relative overflow-hidden">
+                        <input type="radio" name="scope" value="all" checked class="mt-1 accent-brand-500" onchange="toggleSelect(false)">
+                        <div class="flex-1 relative z-10">
+                            <span class="text-sm font-bold text-slate-200 block group-hover:text-white">Análise Completa da Carteira</span>
+                            <span class="text-xs text-slate-500 mt-1 block">Varredura em todas as 5 ações monitoradas.</span>
+                        </div>
+                        <i class="ph-duotone ph-stack text-3xl absolute right-4 bottom-4 text-slate-800 group-hover:text-slate-700 group-has-[:checked]:text-brand-500/20 transition-colors"></i>
+                    </label>
+
+                    <div class="p-4 rounded-xl border border-slate-700 bg-slate-800/30 transition-all hover:border-slate-600 focus-within:border-brand-500/50">
+                        <label class="flex items-center gap-3 cursor-pointer mb-3 group">
+                            <input type="radio" name="scope" value="single" class="accent-brand-500" onchange="toggleSelect(true)">
+                            <span class="text-sm font-bold text-slate-200 group-hover:text-white">Ação Específica</span>
+                        </label>
+                        
+                        <div class="relative">
+                            <i class="ph-bold ph-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-slate-500"></i>
+                            <select id="select-ticker" disabled class="w-full bg-slate-950 text-slate-300 text-sm border border-slate-700 rounded-lg py-2.5 pl-10 pr-4 focus:ring-1 focus:ring-brand-500 focus:border-brand-500 disabled:opacity-40 disabled:cursor-not-allowed appearance-none transition-opacity">
+                                <option value="PETR4.SA">Petrobras (PETR4)</option>
+                                <option value="VALE3.SA">Vale (VALE3)</option>
+                                <option value="ITUB4.SA">Itaú Unibanco (ITUB4)</option>
+                                <option value="MGLU3.SA">Magazine Luiza (MGLU3)</option>
+                                <option value="WEGE3.SA">WEG (WEGE3)</option>
+                            </select>
+                            <i class="ph-bold ph-caret-down absolute right-3 top-1/2 -translate-y-1/2 text-slate-600 pointer-events-none"></i>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="px-6 py-4 bg-slate-950 border-t border-slate-800 flex justify-end gap-3">
+                    <button onclick="fecharModal()" class="px-4 py-2 text-sm font-medium text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition">
+                        Cancelar
+                    </button>
+                    <button onclick="dispararIA()" class="px-5 py-2 bg-brand-600 hover:bg-brand-500 text-white text-sm font-bold rounded-lg shadow-lg shadow-brand-600/20 flex items-center gap-2 transition active:scale-95">
+                        <i class="ph-bold ph-rocket-launch"></i>
+                        Iniciar Agentes
+                    </button>
+                </div>
             </div>
-            <div class="flex justify-end gap-3 pt-2 border-t border-slate-700">
-                <button onclick="fecharModal()" class="text-slate-400 hover:text-white px-4 py-2 text-sm font-medium">Cancelar</button>
-                <button onclick="dispararIA()" class="bg-purple-600 hover:bg-purple-500 text-white px-6 py-2 rounded-lg font-bold text-sm shadow-lg shadow-purple-900/20 flex items-center gap-2 transition-all hover:scale-105">
-                    🚀 Iniciar Agentes
-                </button>
+        </div>
+    </div>
+    
+    <div id="modal-visualizar-artigo" class="fixed inset-0 bg-black bg-opacity-75 z-50 hidden transition-opacity" onclick="fecharModalConteudo()">
+        <div class="flex items-center justify-center h-full">
+            <div class="bg-slate-800 rounded-lg shadow-2xl p-6 m-4 max-w-4xl w-full max-h-[90vh] overflow-y-auto" onclick="event.stopPropagation()">
+                
+                <div class="flex justify-between items-start border-b border-gray-700 pb-3 mb-4 sticky top-0 bg-slate-800 z-10">
+                    <h3 id="modal-titulo" class="text-2xl font-bold text-white">Título do Artigo</h3>
+                    <button onclick="fecharModalConteudo()" class="text-gray-400 hover:text-white transition-colors">
+                        <i class="ph-bold ph-x text-2xl"></i>
+                    </button>
+                </div>
+                
+                <div id="modal-corpo-conteudo" class="text-gray-300 text-base leading-relaxed space-y-4">
+                    </div>
+                
             </div>
         </div>
     </div>

@@ -9,16 +9,14 @@ class Artigo extends Model
 {
     use HasFactory;
 
-    /**
-     * Os atributos que são preenchíveis em massa (mass assignable).
-     *
-     * @var array<int, string>
-     */
+    protected $table = 'artigos';
+
+    // Lista de campos que podem ser gravados no banco
     protected $fillable = [
+        'ticker',
         'titulo',
         'conteudo',
-        'ticker',       // <--- CORRIGIDO AQUI (Era 'acao_ticker')
         'recomendacao',
-        'status',
+        'status'
     ];
 }

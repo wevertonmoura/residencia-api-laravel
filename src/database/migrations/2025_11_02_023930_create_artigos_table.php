@@ -13,23 +13,26 @@ class CreateArtigosTable extends Migration
      */
     public function up()
     {
-        Schema::create('artigos', function (Blueprint $table) {
-            $table->id();
-            $table->string('titulo', 255); 
-            $table->text('conteudo'); 
-            
-            // --- MUDANÇA AQUI ---
-            // Mudamos de 'acao_ticker' para 'ticker' para padronizar com o Python e o Model
-            $table->string('ticker', 20); 
-            // --------------------
-
-            $table->string('recomendacao', 50); 
-            
-            // Coluna do Fator Humano
-            $table->string('status', 50)->default('rascunho'); 
-            
-            $table->timestamps(); 
-        });
+        // Verifica se a tabela já existe para evitar erro
+        if (!Schema::hasTable('artigos')) {
+            Schema::create('artigos', function (Blueprint $table) {
+                $table->id();
+                
+                // Dados Principais
+                $table->string('ticker', 10); // Ex: PETR4.SA
+                $table->string('titulo');
+                $table->text('conteudo'); // Texto longo para a matéria
+                
+                // Metadados
+                $table->string('recomendacao', 20); // Compra, Venda, Neutro
+                
+                // Controle de Estado (Sênior: Usamos ENUM para garantir integridade)
+                // draft = Rascunho, published = Publicado, trash = Lixeira
+                $table->enum('status', ['draft', 'published', 'trash'])->default('draft');
+                
+                $table->timestamps(); // created_at e updated_at
+            });
+        }
     }
 
     /**

@@ -1,138 +1,97 @@
+import google.generativeai as genai
 import requests
-import json
 import logging
-import os
-from dataclasses import dataclass, asdict
-from typing import Optional, Dict, Any
-from abc import ABC, abstractmethod
+import json
+from typing import Optional
+from models import ArtigoFinal, StockData, AnaliseSentimento
 
-# --- Configuração de Logging ---
 logger = logging.getLogger("AgenteKey")
 
-# --- Domínio (DTO) ---
-@dataclass
-class ArtigoFinal:
-    titulo: str
-    conteudo: str
-    recomendacao: str
-    ticker: str
-    status: str = "rascunho"
-
-# --- Interfaces (Abstraction Layer) ---
-class RedatorIA(ABC):
-    @abstractmethod
-    def escrever_artigo(self, dados_julia: Dict, dados_pedro: Dict, ticker: str) -> Optional[ArtigoFinal]:
-        pass
-
-class PublicadorLaravel(ABC):
-    @abstractmethod
-    def publicar(self, artigo: ArtigoFinal) -> bool:
-        pass
-
-# --- Infraestrutura: Gemini Writer (Implementation) ---
-class GeminiWriter(RedatorIA):
+class GeminiWriter:
     def __init__(self, api_key: str):
-        self.api_url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key={api_key}"
-        self.system_prompt = (
-            "Você é 'Key', um jornalista financeiro sênior. "
-            "Sua função é sintetizar dados técnicos e sentimento de mercado em um artigo "
-            "claro, objetivo e acionável. Escreva em Português do Brasil."
+        genai.configure(api_key=api_key)
+        self.model = genai.GenerativeModel(
+            model_name="gemini-2.5-flash", # <--- VERSÃO CORRETA DA SUA LISTA
+            generation_config={"response_mime_type": "application/json"}
         )
 
-    def escrever_artigo(self, dados_julia: Dict, dados_pedro: Dict, ticker: str) -> Optional[ArtigoFinal]:
-        logger.info(f"Key está escrevendo o artigo para {ticker}...")
+    def escrever_artigo(self, dados_julia: StockData, dados_pedro: AnaliseSentimento, ticker: str) -> Optional[ArtigoFinal]:
+        logger.info(f"Key está redigindo a matéria sobre {ticker} com perfil sênior...")
 
-        # Convertendo os inputs complexos para texto string para o prompt
-        contexto_julia = json.dumps(dados_julia, indent=2, ensure_ascii=False)
-        contexto_pedro = json.dumps(dados_pedro, indent=2, ensure_ascii=False)
+        # --- ENGENHARIA DE PROMPT AVANÇADA (Perfil Bloomberg/Valor) ---
+        prompt = f"""
+        ATUE COMO: Editor-Chefe de um portal de notícias financeiras de alta credibilidade (ex: Bloomberg Línea, Valor Econômico).
+        SUA MISSÃO: Escrever uma análise de mercado rápida, sofisticada e baseada em dados.
 
-        prompt_usuario = f"""
-        Escreva um artigo financeiro sobre {ticker} baseado nestes dados:
+        --- DADOS TÉCNICOS (Fonte: Agente Júlia) ---
+        Ativo: {dados_julia.ticker}
+        Preço Atual: R$ {dados_julia.price:.2f}
+        Variação (Tendência): {dados_julia.tendencia_longo_prazo}
+        Média Móvel (200d): R$ {dados_julia.media_movel_200:.2f}
+        Máxima 52 sem: R$ {dados_julia.high_52w:.2f} | Mínima 52 sem: R$ {dados_julia.low_52w:.2f}
 
-        --- DADOS FUNDAMENTAIS (Júlia) ---
-        {contexto_julia}
+        --- DADOS DE SENTIMENTO (Fonte: Agente Pedro) ---
+        Sentimento do Mercado: {dados_pedro.sentimento.upper()}
+        O que dizem as notícias: "{dados_pedro.resumo}"
 
-        --- SENTIMENTO DE MERCADO (Pedro) ---
-        {contexto_pedro}
-
-        REQUISITOS:
-        1. Título: Impactante e curto (max 100 chars).
-        2. Conteúdo: Mínimo 3 parágrafos. Use markdown básico.
-        3. Recomendação: Apenas uma palavra (Compra, Venda, Neutro).
+        --- DIRETRIZES EDITORIAIS RÍGIDAS ---
+        1. TOM DE VOZ: Profissional, analítico, sem gírias, mas direto ao ponto. Use termos de mercado corretamente (bullish, bearish, suporte, resistência).
+        2. ESTRUTURA DO TEXTO:
+           - Título: Impactante, curto e deve conter o Ticker.
+           - Lead (1º parágrafo): O que está acontecendo com o preço agora e o motivo principal (notícias).
+           - Análise (2º parágrafo): Compare o preço atual com a Média Móvel de 200 dias. Diga se está esticado ou descontado.
+           - Veredito (3º parágrafo): Conclusão rápida para o investidor.
+        3. FORMATAÇÃO VISUAL:
+           - Use negrito (**texto**) para destacar TODOS os preços e porcentagens citados.
         
-        SAÍDA OBRIGATÓRIA: JSON com as chaves 'titulo', 'conteudo', 'recomendacao'.
+        --- FORMATO DE SAÍDA (JSON) ---
+        Responda APENAS o JSON abaixo preenchido:
+        {{
+            "titulo": "Manchete aqui",
+            "conteudo": "Texto completo em Markdown aqui",
+            "recomendacao": "Compra, Venda ou Neutro"
+        }}
         """
 
-        payload = {
-            "contents": [{"parts": [{"text": prompt_usuario}]}],
-            "systemInstruction": {"parts": [{"text": self.system_prompt}]},
-            "generationConfig": {
-                "responseMimeType": "application/json",
-                "responseSchema": {
-                    "type": "OBJECT",
-                    "properties": {
-                        "titulo": {"type": "STRING"},
-                        "conteudo": {"type": "STRING"},
-                        "recomendacao": {"type": "STRING"}
-                    },
-                    "required": ["titulo", "conteudo", "recomendacao"]
-                }
-            }
-        }
-
         try:
-            response = requests.post(self.api_url, json=payload, headers={"Content-Type": "application/json"}, timeout=120)
-            response.raise_for_status()
-            
-            # Parse do resultado
-            resultado_ia = json.loads(response.json()['candidates'][0]['content']['parts'][0]['text'])
+            response = self.model.generate_content(prompt)
+            resultado = json.loads(response.text)
             
             return ArtigoFinal(
-                titulo=resultado_ia['titulo'],
-                conteudo=resultado_ia['conteudo'],
-                recomendacao=resultado_ia['recomendacao'],
+                titulo=resultado['titulo'],
+                conteudo=resultado['conteudo'],
+                recomendacao=resultado['recomendacao'],
                 ticker=ticker
             )
-
         except Exception as e:
-            logger.error(f"Erro na geração do texto com Gemini: {e}")
+            logger.error(f"Erro na redação do artigo: {e}")
             return None
 
-# --- Infraestrutura: Laravel Publisher (Implementation) ---
-class APILaravelPublisher(PublicadorLaravel):
+class APILaravelPublisher:
     def __init__(self, api_url: str):
         self.api_url = api_url
 
     def publicar(self, artigo: ArtigoFinal) -> bool:
         logger.info(f"Enviando artigo de {artigo.ticker} para o Laravel...")
         try:
-            payload = asdict(artigo)
-            response = requests.post(self.api_url, json=payload, timeout=30)
+            # O .model_dump() do Pydantic já converte tudo para dicionário compatível com JSON
+            response = requests.post(self.api_url, json=artigo.model_dump(), timeout=15)
             response.raise_for_status()
-            logger.info("Artigo publicado com sucesso no Laravel!")
+            logger.info("✅ Artigo publicado com sucesso!")
             return True
         except Exception as e:
-            logger.error(f"Falha ao enviar para Laravel: {e}")
+            logger.error(f"❌ Falha ao enviar para Laravel: {e}")
             return False
 
-# --- Application Service: Agente Key ---
 class KeyAgent:
-    def __init__(self, writer: RedatorIA, publisher: PublicadorLaravel):
+    def __init__(self, writer: GeminiWriter, publisher: APILaravelPublisher):
         self.writer = writer
         self.publisher = publisher
 
-    def processar_e_publicar(self, ticker: str, dados_julia: Dict, dados_pedro: Dict):
-        # 1. Escrever
+    def processar_e_publicar(self, ticker: str, dados_julia: StockData, dados_pedro: AnaliseSentimento):
+        # 1. Escreve
         artigo = self.writer.escrever_artigo(dados_julia, dados_pedro, ticker)
         
-        if not artigo:
-            logger.error("Falha na etapa de escrita. Abortando.")
-            return
-
-        # 2. Publicar
-        sucesso = self.publisher.publicar(artigo)
-        
-        if sucesso:
-            logger.info("Ciclo do Agente Key finalizado com êxito.")
-        else:
-            logger.warning("Artigo foi escrito, mas falhou na publicação.")
+        # 2. Publica (apenas se a escrita funcionou)
+        if artigo:
+            self.publisher.publicar(artigo)

@@ -4,23 +4,22 @@ return [
 
     /*
     |--------------------------------------------------------------------------
-    | Configuração CORS (Versão Específica para VS Code)
+    | Cross-Origin Resource Sharing (CORS) Configuration
     |--------------------------------------------------------------------------
+    |
+    | Here you may configure your settings for cross-origin resource sharing
+    | or "CORS". This determines what cross-origin operations may execute
+    | in web browsers. You are free to adjust these settings as needed.
+    |
+    | To learn more: https://developer.mozilla.org/en-US/docs/Web/HTTP/CORS
+    |
     */
 
-    // Permite acesso a qualquer rota
-    'paths' => ['*', 'api/*'],
+    'paths' => ['api/*', 'sanctum/csrf-cookie', '*'], // Adicionado '*' para garantir
 
-    // Permite todos os métodos (GET, POST, etc)
-    'allowed_methods' => ['*'],
+    'allowed_methods' => ['*'], // Aceita GET, POST, DELETE, etc.
 
-    // AQUI ESTÁ A MUDANÇA: 
-    // Adicionamos explicitamente o endereço do seu Front-end
-    'allowed_origins' => [
-        '*',                      // Tenta liberar geral
-        'http://127.0.0.1:5500',  // Libera seu VS Code (IP)
-        'http://localhost:5500',  // Libera seu VS Code (Nome)
-    ],
+    'allowed_origins' => ['*'], // Aceita qualquer origem (resolve o problema do 127.0.0.1:5500)
 
     'allowed_origins_patterns' => [],
 
@@ -30,6 +29,6 @@ return [
 
     'max_age' => 0,
 
-    'supports_credentials' => false,
+    'supports_credentials' => false, // Mantenha false se usar '*' no allowed_origins
 
 ];

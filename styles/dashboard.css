@@ -1,27 +1,120 @@
 /*
  * Arquivo: styles/dashboard.css
- * Responsabilidade: Estilos personalizados (Scrollbar, etc.)
- * O restante do visual é gerenciado pelo Tailwind CSS.
+ * Responsabilidade: ajustes de layout, correções de spacing e organização do dashboard.
+ * Tailwind continua sendo o principal gerenciador visual.
  */
 
-body { 
-    font-family: 'Inter', sans-serif; 
-}
-.hidden { 
-    display: none; 
+/* Fonte geral */
+body {
+    font-family: 'Inter', sans-serif;
+    background: #0f172a;
+    margin: 0;
+    padding: 0;
+    height: 100vh;
+    overflow: hidden; /* Remove rolagens descontroladas */
 }
 
-/* Scrollbar personalizada para a área de conteúdo */
-::-webkit-scrollbar { 
-    width: 6px; 
+/* Sistema padrão */
+.hidden { display: none; }
+
+/* CORRIGE ESPAÇOS GIGANTES NO LAYOUT */
+#app-dashboard {
+    height: 100vh;
+    display: flex;
+    flex-direction: row;
+    overflow: hidden;
 }
-::-webkit-scrollbar-track { 
-    background: #0f172a; /* Cor do fundo escuro */
+
+/* MENU LATERAL — Altura travada 100% */
+.sidebar {
+    height: 100vh;
+    overflow-y: auto;
 }
-::-webkit-scrollbar-thumb { 
-    background: #334155; /* Cor do "polegar" */
-    border-radius: 3px; 
+
+/* ÁREA DE CONTEÚDO — ocupa todo o espaço disponível */
+.main-content {
+    flex: 1;
+    height: 100vh;
+    overflow-y: auto;
+    padding: 20px;
 }
-::-webkit-scrollbar-thumb:hover { 
-    background: #475569; 
+
+/* CARDS — tira o espaço exagerado */
+.card-section {
+    margin-top: 10px;
+}
+
+.card {
+    background: #1e293b;
+    border-radius: 10px;
+    padding: 15px;
+}
+
+/* Títulos mais compactos */
+.section-title {
+    margin-bottom: 10px;
+}
+
+/* BOTÕES — tornam mais visíveis */
+.action-btn {
+    padding: 8px 14px;
+    font-size: 14px;
+    border-radius: 8px;
+}
+
+/* MODAL — centralizado perfeitamente */
+.modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.6);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* Caixa branca do modal */
+.modal-box {
+    background: white;
+    width: 380px;
+    max-width: 90%;
+    padding: 20px;
+    border-radius: 12px;
+}
+
+/* Título modal */
+.modal-title {
+    font-size: 18px;
+    margin-bottom: 15px;
+    font-weight: bold;
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+    width: 6px;
+}
+::-webkit-scrollbar-track {
+    background: #0f172a;
+}
+::-webkit-scrollbar-thumb {
+    background: #334155;
+    border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+    background: #475569;
+}
+
+/* Loader global */
+#global-loader {
+    pointer-events: none;
+}
+
+/* TAB FIX — garante que as abas funcionem sem quebrar layout */
+.tab-content {
+    display: none;
+}
+.tab-content.active {
+    display: block;
 }

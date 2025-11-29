@@ -1,14 +1,16 @@
-// CONFIG API
-const API = 'http://127.0.0.1/api';
+// --- CONFIGURAÇÃO DE ENDPOINTS (ARQUITETURA HÍBRIDA) ---
+// Certifique-se de que esta URL base está correta para seu ambiente Laravel
+const LARAVEL_API = 'http://127.0.0.1/api';       // Para ler/salvar artigos (Porta 80)
+const PYTHON_API  = 'http://127.0.0.1:5000/gerar'; // Para gerar inteligência (Porta 5000)
 
-// --- CORREÇÃO DA DATA BRASILEIRA (RESOLVE "Invalid Date") ---
+// --- UTILITÁRIOS ---
+
 function formatDate(dataString) {
     if (!dataString) return "Data Indisponível";
     try {
         const data = new Date(dataString);
         if(isNaN(data.getTime())) return "Processando...";
         
-        // Retorna a data e hora em formato brasileiro completo
         return data.toLocaleDateString('pt-BR', {
             day: '2-digit', month: '2-digit', year: 'numeric'
         }) + ' às ' + data.toLocaleTimeString('pt-BR', {
@@ -19,140 +21,361 @@ function formatDate(dataString) {
     }
 }
 
-// CORREÇÃO DO NOME DA AÇÃO (Ticker)
 function getTicker(artigo) {
     return artigo.ticker || artigo.acao_ticker || 'N/A';
 }
 
-// Wrapper API
-async function api(url, method='GET', body=null) {
-    const opts = { method, headers: {'Content-Type':'application/json'} };
+async function apiLaravel(endpoint, method='GET', body=null) {
+    const url = `${LARAVEL_API}${endpoint}`;
+    const opts = { 
+        method, 
+        headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json'
+        } 
+    };
+    
     if(body) opts.body = JSON.stringify(body);
+    
     try {
         const res = await fetch(url, opts);
-        if(!res.ok) throw new Error(`Erro ${res.status}`);
+        if(!res.ok) throw new Error(`Erro Laravel: ${res.status}`);
         if(res.status === 204) return true;
         return await res.json();
     } catch(e) {
-        console.error(e);
-        return null;
+        console.error("Falha na comunicação com Laravel:", e);
+        return null; 
     }
 }
 
-// RENDERIZAÇÃO DOS CARDS (Usa a função formatDate)
-function renderCard(a, type) {
-    let btns = '';
-    const tickerName = getTicker(a);
-    const dataHoraFormatada = formatDate(a.created_at); // <-- USA A FUNÇÃO CORRIGIDA AQUI
-    
-    // Cores das Recomendações
-    let recClass = "bg-slate-700 text-slate-300";
-    if(a.recomendacao.includes('Compra')) recClass = "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20";
-    if(a.recomendacao.includes('Venda')) recClass = "bg-red-500/10 text-red-400 border border-red-500/20";
+// --- RENDERIZAÇÃO (PADRÃO SÊNIOR) ---
 
-    if(type === 'rascunho') {
-        btns = `<button onclick="acao('${a.id}','aprovar')" class="flex-1 bg-blue-600 hover:bg-blue-500 text-white text-sm font-bold py-2 rounded transition-colors">Aprovar</button>
-                <button onclick="acao('${a.id}','lixeira')" class="px-3 py-2 bg-slate-700 hover:bg-red-500/20 hover:text-red-400 text-slate-400 rounded transition-colors" title="Mover para Lixeira">🗑️</button>`;
-    } else if (type === 'publicado') {
-        btns = `<button onclick="acao('${a.id}','desaprovar')" class="w-full bg-slate-700 hover:bg-yellow-600/20 hover:text-yellow-400 text-slate-300 border border-slate-600 text-sm font-medium py-2 rounded transition-colors">↩ Reverter</button>`;
-    } else { // Lixeira
-        btns = `<button onclick="acao('${a.id}','restaurar')" class="flex-1 text-blue-400 hover:text-blue-300 font-medium text-sm border border-blue-900/50 rounded py-1">Restaurar</button>
-                <button onclick="acao('${a.id}','permanente')" class="flex-1 text-red-500 hover:text-red-400 font-medium text-sm border border-red-900/50 rounded py-1 ml-2">Excluir</button>`;
+function getTagColors(recomendacao) {
+    const tag = recomendacao ? recomendacao.toUpperCase() : 'NEUTRO';
+    switch (tag) {
+        case 'COMPRA':
+            return { bg: 'bg-compra/20 text-compra border-compra', colorClass: 'compra' };
+        case 'VENDA':
+            return { bg: 'bg-venda/20 text-venda border-venda', colorClass: 'venda' };
+        case 'NEUTRO':
+        default:
+            return { bg: 'bg-neutro/20 text-neutro border-neutro', colorClass: 'neutro' };
     }
+}
 
-    return `<div class="bg-slate-800 p-5 rounded-xl border border-slate-700 shadow-sm hover:border-slate-600 transition-all group relative overflow-hidden">
-        <div class="absolute top-0 left-0 w-1 h-full ${type === 'rascunho' ? 'bg-yellow-500' : (type === 'publicado' ? 'bg-green-500' : 'bg-red-500')}"></div>
-        <div class="flex justify-between items-start mb-3 pl-2">
-            <span class="text-xs font-bold text-white bg-slate-700 px-2 py-1 rounded uppercase tracking-wider">${tickerName}</span>
-            <span class="text-[10px] text-slate-500">${dataHoraFormatada}</span> 
+function renderCard(a, type) {
+    let controlButtons = '';
+    const tickerName = getTicker(a);
+    const dataHora = formatDate(a.updated_at || a.created_at);
+    const colors = getTagColors(a.recomendacao);
+    const isUnderReview = type === 'rascunho' && a.motivo_revisao;
+    
+    // Escapa o conteúdo completo para ser seguro no onclick
+    const conteudoEscapado = a.conteudo ? a.conteudo.replace(/"/g, '&quot;').replace(/'/g, '&#39;') : '';
+
+    // Adição de métrica de Views para artigos publicados (Simulação)
+    const viewsElement = (type === 'publicado') ? `
+        <span class="text-xs font-medium text-compra flex items-center gap-1">
+            <i class="ph-bold ph-chart-line"></i> ${(Math.floor(Math.random() * (15000 - 500 + 1)) + 500 / 1000).toFixed(1)}K Views
+        </span>` : `
+        <span class="text-[10px] text-slate-500">${dataHora}</span>
+    `;
+    
+    // Configuração dos Botões de CONTROLE (PUBLICAR/DESPUBLICAR)
+    if(type === 'rascunho') {
+        controlButtons = `
+            <button onclick="aprovarArtigo('${a.id}')" class="flex-1 bg-compra hover:bg-emerald-500 text-white text-xs font-bold py-2 rounded transition shadow-lg shadow-emerald-900/20">PUBLICAR</button>
+            <button onclick="moverParaLixeira('${a.id}')" class="px-3 py-2 bg-slate-700 hover:bg-venda/20 hover:text-venda text-slate-400 rounded transition" title="Descartar">🗑️</button>
+        `;
+    } else if (type === 'publicado') {
+        controlButtons = `<button onclick="despublicarArtigo('${a.id}')" class="w-full bg-venda hover:bg-red-600 text-white text-xs font-medium py-2 rounded border border-venda transition">🔴 DESPUBLICAR</button>`;
+    } else { // Lixeira
+        controlButtons = `
+            <button onclick="restaurarArtigo('${a.id}')" class="flex-1 text-brand-400 hover:text-brand-300 font-medium text-xs border border-brand-500/30 rounded py-1.5 hover:bg-brand-500/10 transition">Restaurar</button>
+            <button onclick="excluirPermanente('${a.id}')" class="flex-1 text-red-500 hover:text-red-400 font-medium text-xs border border-red-500/30 rounded py-1.5 ml-2 hover:bg-red-500/10 transition">Excluir</button>
+        `;
+    }
+    
+    // --- ESTRUTURA FINAL DO CARD (COMPACTA) ---
+    return `
+    <div class="bg-slate-800/50 p-4 rounded-xl border border-slate-700 shadow-sm hover:border-${colors.colorClass} transition-all group relative overflow-hidden flex flex-col h-full">
+        <div class="absolute top-0 left-0 w-1 h-full ${type === 'rascunho' ? 'bg-neutro' : (type === 'publicado' ? 'bg-compra' : 'bg-venda')}"></div>
+        
+        <div class="flex justify-between items-start mb-2 pl-3">
+            <div class="flex items-center gap-2">
+                 <span class="text-[10px] font-bold text-white bg-slate-700 px-2 py-0.5 rounded uppercase tracking-wider shadow-sm">${tickerName}</span>
+                 <span class="inline-block text-[10px] uppercase font-bold px-2 py-1 rounded border ${colors.bg}">${a.recomendacao || 'Análise'}</span>
+            </div>
+            ${viewsElement}
         </div>
-        <div class="pl-2 mb-4">
-            <h4 class="text-white font-semibold leading-snug mb-2 group-hover:text-blue-400 transition-colors">${a.titulo}</h4>
-            <span class="inline-block text-[10px] uppercase font-bold px-2 py-1 rounded ${recClass}">${a.recomendacao}</span>
+        
+        <div class="pl-3 flex-1">
+            <h4 class="text-white font-extrabold text-lg leading-snug mb-1 transition-colors line-clamp-2">${a.titulo}</h4>
+            
+            <p class="text-sm text-slate-400 mb-2 line-clamp-2">${a.resumo || a.conteudo}</p>
+            
+            ${isUnderReview ? `<span class="text-xs font-medium text-red-400 flex items-center gap-1" title="${a.motivo_revisao}"><i class="ph-bold ph-warning"></i> Revisão Necessária</span>` : `<p class="text-xs text-slate-500">ID: ${a.id}</p>`}
         </div>
-        <div class="flex gap-2 mt-auto pl-2 pt-3 border-t border-slate-700/50">${btns}</div>
+        
+        <div class="flex gap-2 mt-auto pl-3 py-1 border-t border-slate-700/50 items-center">
+            
+            <button 
+                class="text-brand-400 hover:text-brand-300 font-semibold transition-colors text-sm flex items-center gap-1 mr-4"
+                onclick="abrirModalConteudo('${a.titulo.replace(/'/g, '&#39;')}', '${conteudoEscapado}')"
+            >
+                <i class="ph-bold ph-eye"></i> Veja Mais
+            </button>
+            
+            <div class="flex flex-1 gap-2">
+                 ${controlButtons}
+            </div>
+        </div>
     </div>`;
 }
 
-// Navegação de Abas
+// --- FUNÇÕES DE MODAL DE CONTEÚDO ---
+// ... (abrirModalConteudo, fecharModalConteudo - MANTIDAS) ...
+
+function abrirModalConteudo(titulo, conteudo) {
+    const modal = document.getElementById('modal-visualizar-artigo');
+    if (!modal) {
+        alert("Erro: Modal de visualização não encontrado na página HTML.");
+        return;
+    } 
+
+    document.getElementById('modal-titulo').innerText = titulo;
+    document.getElementById('modal-corpo-conteudo').innerHTML = conteudo; 
+    
+    modal.classList.remove('hidden'); 
+    document.body.classList.add('overflow-hidden');
+}
+
+function fecharModalConteudo() {
+    document.getElementById('modal-visualizar-artigo').classList.add('hidden');
+    document.body.classList.remove('overflow-hidden');
+}
+
+
+// --- RESTANTE DA LÓGICA (MANTIDO) ---
+
+function emptyState(msg) {
+    return `<div class="col-span-full py-8 text-center border-2 border-dashed border-slate-800 rounded-xl">
+        <p class="text-slate-500 text-sm font-medium">${msg}</p>
+    </div>`;
+}
+
+// --- CARREGAMENTO DE DADOS E NAVEGAÇÃO ---
+
 function showTab(tabName) {
     document.getElementById('tab-painel').classList.add('hidden');
     document.getElementById('tab-lixeira').classList.add('hidden');
-    document.getElementById(`tab-${tabName}`).classList.remove('hidden');
-    document.getElementById('page-title').textContent = tabName === 'lixeira' ? 'Lixeira' : 'Visão Geral';
+    
+    const target = document.getElementById(`tab-${tabName}`);
+    target.classList.remove('hidden');
+    
+    document.getElementById('page-title').textContent = tabName === 'lixeira' ? 'Lixeira' : 'Dashboard Financeiro';
+    
+    document.getElementById('nav-painel').classList.remove('bg-brand-500/10', 'text-brand-500', 'border-brand-500/20');
+    document.getElementById('nav-lixeira').classList.remove('bg-brand-500/10', 'text-brand-500', 'border-brand-500/20');
+    document.getElementById('nav-painel').classList.add('text-slate-400', 'hover:bg-slate-800');
+    document.getElementById('nav-lixeira').classList.add('text-slate-400', 'hover:bg-slate-800');
+    document.getElementById(`nav-${tabName}`).classList.add('bg-brand-500/10', 'text-brand-500', 'border-brand-500/20');
+    document.getElementById(`nav-${tabName}`).classList.remove('text-slate-400', 'hover:bg-slate-800');
+    
     if(tabName === 'lixeira') loadLixeira(); else loadAll();
 }
 
-// Carga de Dados
 async function loadAll() {
-    document.getElementById('global-loader').classList.remove('hidden');
-    const rasc = await api(`${API}/artigos`);
-    const pub = await api(`${API}/artigos/publicados`);
-    document.getElementById('global-loader').classList.add('hidden');
+    toggleLoader(true);
+    
+    const [pendentesResponse, pubResponse] = await Promise.all([
+        apiLaravel('/artigos/pendentes'), 
+        apiLaravel('/artigos/publicados') 
+    ]);
 
-    if(rasc && rasc.data) {
-        document.getElementById('list-rascunhos').innerHTML = rasc.data.map(a => renderCard(a, 'rascunho')).join('') || '<p class="text-slate-500 italic text-sm">Sem rascunhos.</p>';
-        document.getElementById('count-rascunhos').textContent = rasc.data.length;
+    toggleLoader(false);
+
+    if (!pendentesResponse && !pubResponse) {
+        document.getElementById('list-rascunhos').innerHTML = emptyState('Erro ao conectar à API. Verifique se o backend está ativo e as rotas corretas (pendentes/publicados).');
+        document.getElementById('count-rascunhos').textContent = 0;
+        document.getElementById('count-publicados').textContent = 0;
+        document.getElementById('list-publicados').innerHTML = '';
+        return;
     }
-    if(pub && pub.data) {
-        document.getElementById('list-publicados').innerHTML = pub.data.map(a => renderCard(a, 'publicado')).join('') || '<p class="text-slate-500 italic text-sm">Nada publicado.</p>';
-        document.getElementById('count-publicados').textContent = pub.data.length;
-    }
+
+    const rascContainer = document.getElementById('list-rascunhos');
+    const pendenteData = pendentesResponse?.data || pendentesResponse || [];
+
+    rascContainer.innerHTML = pendenteData.length ? pendenteData.map(a => renderCard(a, 'rascunho')).join('') : emptyState('Sem artigos pendentes de aprovação.');
+    document.getElementById('count-rascunhos').textContent = pendenteData.length; 
+
+    const pubContainer = document.getElementById('list-publicados');
+    const publicadoData = pubResponse?.data || pubResponse || [];
+
+    pubContainer.innerHTML = publicadoData.length ? publicadoData.map(a => renderCard(a, 'publicado')).join('') : emptyState('Nenhum artigo publicado no Portal.');
+    document.getElementById('count-publicados').textContent = publicadoData.length;
 }
 
 async function loadLixeira() {
-    document.getElementById('global-loader').classList.remove('hidden');
-    const lix = await api(`${API}/artigos/lixeira`);
-    document.getElementById('global-loader').classList.add('hidden');
-    if(lix && lix.data) {
-        document.getElementById('list-lixeira').innerHTML = lix.data.map(a => renderCard(a, 'lixeira')).join('') || '<p class="text-slate-500 italic col-span-full text-center py-10">Lixeira vazia.</p>';
+    toggleLoader(true);
+    const lixResponse = await apiLaravel('/artigos/lixeira');
+    toggleLoader(false);
+
+    const lixContainer = document.getElementById('list-lixeira');
+    const lixeiraData = lixResponse?.data || lixResponse || [];
+
+    lixContainer.innerHTML = lixeiraData.length ? lixeiraData.map(a => renderCard(a, 'lixeira')).join('') : emptyState('Lixeira vazia.');
+}
+
+// --- AÇÕES ESPECÍFICAS (FLUXO SÊNIOR) ---
+
+async function aprovarArtigo(id) {
+    if (!confirm('Confirmar publicação no Portal?')) return;
+    toggleLoader(true);
+    const result = await apiLaravel(`/artigos/${id}/aprovar`, 'POST');
+    toggleLoader(false);
+
+    if (result) {
+        alert('Artigo publicado com sucesso!');
+        await loadAll();
+    } else {
+        alert('Erro ao publicar artigo.');
     }
 }
 
-// Ações (Backend)
-async function acao(id, tipo) {
-    if(tipo === 'permanente' && !confirm('Isso apaga do banco de dados para sempre. Continuar?')) return;
-    let endpoint = '';
-    let method = 'POST';
+async function despublicarArtigo(id) {
+    const motivo = prompt('Por favor, informe o motivo da despublicação (Correção, Conteúdo desatualizado, etc.):');
+    if (!motivo) {
+        alert('Despublicação cancelada. O motivo é obrigatório para auditoria.');
+        return;
+    }
 
-    if(tipo === 'aprovar') endpoint = `${API}/artigos/${id}/aprovar`;
-    if(tipo === 'desaprovar') endpoint = `${API}/artigos/${id}/desaprovar`;
-    if(tipo === 'lixeira') endpoint = `${API}/artigos/${id}/lixeira`;
-    if(tipo === 'restaurar') endpoint = `${API}/artigos/${id}/restaurar`;
-    if(tipo === 'permanente') { endpoint = `${API}/artigos/${id}/permanente`; method = 'DELETE'; }
+    if (!confirm(`Tem certeza que deseja DESPUBLICAR? O motivo será: "${motivo}".`)) return;
 
-    await api(endpoint, method);
-    if(document.getElementById('tab-lixeira').classList.contains('hidden')) loadAll(); else loadLixeira();
+    toggleLoader(true);
+    
+    // Manter esta estrutura, mesmo que motivo_revisao seja null no backend.
+    const result = await apiLaravel(`/artigos/${id}/desaprovar`, 'POST', { motivo_revisao: motivo }); 
+    
+    toggleLoader(false);
+
+    if (result) {
+        alert('Artigo despublicado e movido para a fila de Pendentes com sucesso.');
+        await loadAll();
+    } else {
+        alert('Erro ao despublicar artigo. Verifique a conexão com o Laravel.');
+    }
 }
 
-// Modal
+async function moverParaLixeira(id) {
+    if (!confirm('Mover artigo para a Lixeira?')) return;
+    toggleLoader(true);
+    const result = await apiLaravel(`/artigos/${id}/lixeira`, 'POST');
+    toggleLoader(false);
+    if(result) await loadAll(); else alert('Erro ao mover para lixeira.');
+}
+
+async function restaurarArtigo(id) {
+    if (!confirm('Restaurar artigo para Rascunho?')) return;
+    toggleLoader(true);
+    const result = await apiLaravel(`/artigos/${id}/restaurar`, 'POST');
+    toggleLoader(false);
+    if(result) await loadLixeira(); else alert('Erro ao restaurar artigo.');
+}
+
+async function excluirPermanente(id) {
+    if (!confirm('ATENÇÃO: Apagar permanentemente?')) return;
+    toggleLoader(true);
+    const result = await apiLaravel(`/artigos/${id}/permanente`, 'DELETE'); 
+    toggleLoader(false);
+    if(result) await loadLixeira(); else alert('Erro ao excluir permanentemente.');
+}
+
+async function acao(id, tipo) {
+    if (tipo === 'aprovar') return aprovarArtigo(id);
+    if (tipo === 'desaprovar') return despublicarArtigo(id);
+    if (tipo === 'restaurar') return restaurarArtigo(id);
+    if (tipo === 'lixeira') return moverParaLixeira(id);
+    if (tipo === 'permanente') return excluirPermanente(id);
+    
+    const endpoint = `/artigos/${id}/${tipo}`;
+    await apiLaravel(endpoint, 'POST');
+    loadAll();
+}
+
+// --- DISPARO DE I.A. (PYTHON) ---
+// ... (dispararIA - MANTIDO) ...
+
+async function dispararIA() {
+    const scope = document.querySelector('input[name="scope"]:checked').value;
+    const tickerSelect = document.getElementById('select-ticker');
+    
+    const payload = {
+        scope: scope,
+        ticker: (scope === 'single') ? tickerSelect.value : null
+    };
+
+    let msg = (scope === 'all') 
+        ? "Iniciando varredura completa da carteira..." 
+        : `Iniciando análise exclusiva para ${tickerSelect.value}...`;
+
+    fecharModal();
+    
+    alert(`🤖 COMANDO ENVIADO!\n\n${msg}\n\nOs agentes Júlia, Pedro e Key estão trabalhando em segundo plano.\nA página atualizará automaticamente em breve.`);
+
+    try {
+        const response = await fetch(PYTHON_API, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+
+        if (response.ok) {
+            console.log("Python iniciou o processamento.");
+            startPolling();
+        } else {
+            console.error("Erro Python:", response.status);
+            alert("Erro ao contatar os agentes. Verifique se o api.py está rodando.");
+        }
+
+    } catch(e) { 
+        console.error(e);
+        alert("Falha de conexão com a API Python (Porta 5000).\nCertifique-se de que o terminal 'python api.py' está aberto."); 
+    }
+}
+
+
+// --- AUXILIARES UI ---
+
+function startPolling() {
+    let attempts = 0;
+    const interval = setInterval(() => {
+        attempts++;
+        loadAll();
+        if (attempts >= 12) clearInterval(interval);
+    }, 5000);
+}
+
 function abrirModalGerar() { document.getElementById('modal-gerar').classList.remove('hidden'); }
 function fecharModal() { document.getElementById('modal-gerar').classList.add('hidden'); }
+
 function toggleSelect(enable) {
     const sel = document.getElementById('select-ticker');
     sel.disabled = !enable;
-    if(enable) sel.focus();
-}
-
-// Disparo IA
-async function dispararIA() {
-    const scope = document.querySelector('input[name="scope"]:checked').value;
-    let payload = { tickers: 'all' };
-    let msg = "Iniciando análise da carteira completa...";
-
-    if (scope === 'single') {
-        const ticker = document.getElementById('select-ticker').value;
-        payload = { tickers: [ticker] };
-        msg = `Iniciando análise para ${ticker}...`;
+    if(enable) {
+        sel.classList.remove('opacity-50');
+        sel.focus();
+    } else {
+        sel.classList.add('opacity-50');
     }
-
-    fecharModal();
-    alert(`🤖 ${msg}\n\nAguarde alguns instantes e clique em ATUALIZAR.`);
-    try {
-        await api(`${API}/ia/gerar`, 'POST', payload);
-        setTimeout(loadAll, 5000);
-    } catch(e) { alert("Erro ao contatar agentes."); }
 }
 
-// Início
-loadAll();
+function toggleLoader(show) {
+    const loader = document.getElementById('global-loader');
+    if(show) loader.classList.remove('hidden'); else loader.classList.add('hidden');
+}
+
+// Inicialização
+document.addEventListener('DOMContentLoaded', () => {
+    showTab('painel'); 
+});

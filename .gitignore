@@ -3,15 +3,15 @@
 # =======================================================
 
 # PHP VENDOR (Dentro da pasta src/)
-/src/vendor/
+src/vendor/
 
 # PYTHON VENV (Seja em agentes/ ou na raiz)
-/agentes/venv/
-/venv/
+agentes/venv/
+venv/
 
 # NODE/FRONTEND (Se usar npm/yarn)
-/src/node_modules/
-/node_modules/
+src/node_modules/
+node_modules/
 
 # ARQUIVOS DE CACHE E INSTALAÇÃO LOCAL
 composer.lock
@@ -26,19 +26,23 @@ yarn-error.log
 # ARQUIVOS DE DADOS E CONFIGURAÇÃO SECRETA
 .env
 .env.testing
-/db/             # Dados brutos do MySQL (pasta do Docker)
+agentes/.env
+
+# DADOS DO DOCKER (banco MySQL, volumes, etc)
+db/
 
 # CACHE E LOGS DO LARAVEL
-/src/storage/
-/src/bootstrap/cache/
-/src/*.log
+src/storage/
+src/bootstrap/cache/
+src/*.log
 
 # OUTPUTS DE BUILD DO FRONT-END (Assets)
-/src/public/build/
-/src/public/hot
+src/public/build/
+src/public/hot
+
 
 # =======================================================
-# 3. ARQUIVOS TEMPORÁRIOS E OS
+# 3. ARQUIVOS TEMPORÁRIOS E DO SISTEMA OPERACIONAL
 # =======================================================
 
 # PYTHON CACHE E TEMPORÁRIOS
@@ -46,10 +50,10 @@ __pycache__/
 *.pyc
 *.o
 *.so
-/agentes/__pycache__/
-/agentes/.ipynb_checkpoints/ # Notebooks temporários
+agentes/__pycache__/
+agentes/.ipynb_checkpoints/
 
-# IDE E S.O.
+# IDE E SO
 .DS_Store
 Thumbs.db
-/src/.vscode/
+src/.vscode/

@@ -1,32 +1,13 @@
 import yfinance as yf
 import logging
-from dataclasses import dataclass, asdict
-from typing import Optional, Dict, Any
-from abc import ABC, abstractmethod
+from typing import Optional
+from tenacity import retry, stop_after_attempt, wait_fixed
+from models import StockData # Importa do nosso novo arquivo
 
 logger = logging.getLogger("AgenteJulia")
 
-# --- Entidade Atualizada (Com dados técnicos) ---
-@dataclass
-class StockData:
-    ticker: str
-    price: float
-    open_price: float
-    volume: int
-    market_cap: int
-    high_52w: float
-    low_52w: float
-    summary: str
-    # NOVOS CAMPOS TÉCNICOS
-    media_movel_200: float
-    tendencia_longo_prazo: str 
-
-class FinancialDataProvider(ABC):
-    @abstractmethod
-    def fetch_ticker_data(self, ticker: str) -> Optional[StockData]:
-        pass
-
-class YahooFinanceProvider(FinancialDataProvider):
+class YahooFinanceProvider:
+    @retry(stop=stop_after_attempt(3), wait=wait_fixed(2))
     def fetch_ticker_data(self, ticker: str) -> Optional[StockData]:
         try:
             logger.info(f"Conectando ao Yahoo Finance para: {ticker}")
@@ -34,58 +15,36 @@ class YahooFinanceProvider(FinancialDataProvider):
             info = stock.info
 
             if not info or 'currentPrice' not in info:
-                logger.warning(f"Dados incompletos recebidos para {ticker}")
+                logger.warning(f"Dados incompletos para {ticker}")
                 return None
             
-            # --- CÁLCULO DE INTELIGÊNCIA DE DADOS ---
-            # Pegamos o histórico de 200 dias
+            # Cálculo Técnico
             historico = stock.history(period="200d")
+            sma_200 = historico['Close'].mean() if not historico.empty else 0.0
+            preco_atual = info.get("currentPrice", 0.0)
             
-            sma_200 = 0.0
-            tendencia = "Indefinida"
+            tendencia = "ALTA" if preco_atual > sma_200 else "BAIXA"
 
-            if not historico.empty:
-                sma_200 = historico['Close'].mean()
-                preco_atual = info.get("currentPrice", 0.0)
-                
-                # Define a tendência
-                if preco_atual > sma_200:
-                    tendencia = "ALTA (Preço acima da média de 200 dias)"
-                else:
-                    tendencia = "BAIXA (Preço abaixo da média de 200 dias)"
-            # ----------------------------------------
-
+            # Retorna o modelo Pydantic validado
             return StockData(
-                ticker=ticker,
-                price=info.get("currentPrice", 0.0),
+                ticker=ticker.upper(),
+                price=preco_atual,
                 open_price=info.get("open", 0.0),
                 volume=info.get("volume", 0),
                 market_cap=info.get("marketCap", 0),
                 high_52w=info.get("fiftyTwoWeekHigh", 0.0),
                 low_52w=info.get("fiftyTwoWeekLow", 0.0),
                 summary=info.get("longBusinessSummary", "N/A"),
-                # Passamos os novos dados calculados
                 media_movel_200=round(sma_200, 2),
                 tendencia_longo_prazo=tendencia
             )
         except Exception as e:
-            logger.error(f"Erro ao buscar dados no Yahoo Finance: {e}")
-            return None
+            logger.error(f"Erro no Yahoo Finance ({ticker}): {e}")
+            raise e # O @retry vai pegar isso e tentar de novo
 
 class JuliaAgent:
-    def __init__(self, provider: FinancialDataProvider):
+    def __init__(self, provider: YahooFinanceProvider):
         self.provider = provider
 
-    def execute(self, ticker: str) -> Optional[Dict[str, Any]]:
-        logger.info("--- Agente Júlia Iniciando ---")
-        stock_data = self.provider.fetch_ticker_data(ticker)
-        
-        if not stock_data:
-            return None
-        
-        return {
-            "titulo_base": f"Análise Técnica e Fundamentalista: {stock_data.ticker}",
-            "dados_financeiros": asdict(stock_data), # Converte tudo para dict automaticamente
-            "ticker": stock_data.ticker,
-            "status": "success"
-        }
+    def execute(self, ticker: str) -> Optional[StockData]:
+        return self.provider.fetch_ticker_data(ticker)

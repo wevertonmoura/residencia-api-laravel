@@ -8,23 +8,19 @@ class Kernel extends HttpKernel
 {
     /**
      * The application's global HTTP middleware stack.
+     *
      * These middleware are run during every request to your application.
      */
     protected $middleware = [
-        // \App\Http\Middleware\TrustHosts::class,
+        // 1. CORREÇÃO: O CORS DEVE SER O PRIMEIRO!
+        \Fruitcake\Cors\HandleCors::class, 
+        
+        // 2. O resto da ordem segue:
         \App\Http\Middleware\TrustProxies::class,
-        
-        // --- MUDANÇA AQUI ---
-        // Comentamos o CORS padrão para ele não atrapalhar o nosso manual
-        // \Fruitcake\Cors\HandleCors::class, 
-        
         \App\Http\Middleware\PreventRequestsDuringMaintenance::class,
         \Illuminate\Foundation\Http\Middleware\ValidatePostSize::class,
         \App\Http\Middleware\TrimStrings::class,
         \Illuminate\Foundation\Http\Middleware\ConvertEmptyStringsToNull::class,
-        
-        // O NOSSO PORTEIRO FICA AQUI ATIVO
-        \App\Http\Middleware\Cors::class,
     ];
 
     /**
@@ -41,7 +37,7 @@ class Kernel extends HttpKernel
         ],
 
         'api' => [
-            // 'throttle:api',
+            'throttle:api',
             \Illuminate\Routing\Middleware\SubstituteBindings::class,
         ],
     ];
