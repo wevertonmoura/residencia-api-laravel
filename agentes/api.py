@@ -13,7 +13,7 @@ from key_writer import GeminiWriter, APILaravelPublisher, KeyAgent
 load_dotenv()
 app = Flask(__name__)
 
-# --- CONFIGURAÇÃO SÊNIOR DE CORS ---
+
 # Permite que qualquer origem acesse a API (em produção, restrinja ao seu domínio)
 CORS(app, resources={r"/*": {"origins": "*"}})
 

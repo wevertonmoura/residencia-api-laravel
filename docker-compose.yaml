@@ -42,7 +42,7 @@ services:
       dockerfile: Dockerfile
     container_name: invasores_agentes
     # MUDANÇA: Agora rodamos o server.py, não mais o main.py
-    command: python server.py 
+    command: python api.py 
     ports:
       - "5000:5000" # Para podermos testar se precisarmos
     volumes:

@@ -1,74 +1,19 @@
-# Mentoria - API 2025.2
+# 🤖 AlphaNews AI | Parceria Jornal do Commercio (JC)
+### Sistema de Redação Financeira Autônoma com Multi-Agentes
 
-**Proposta:** Criar um grupo de agentes de inteligência artificial para analisar ações e gerar conteúdos recomendando (ou não) a compra, com base em dados reais e percepção de mercado.
+Este projeto foi desenvolvido como parte de uma iniciativa de inovação tecnológica aplicada ao jornalismo financeiro para o **Jornal do Commercio**. O objetivo é automatizar a análise de dados do mercado de capitais e a redação de artigos especializados, unindo a precisão dos dados à agilidade editorial.
 
-- **Júlia:** coleta os dados financeiros atualizados via Yahoo Finance.  
-- **Pedro:** analisa o que o mercado e a mídia estão dizendo sobre a empresa.  
-- **Key:** jornalista experiente que redige o conteúdo final, com base nos dados dos outros dois.  
-- **Fator humano:** revisa e aprova o conteúdo antes da publicação.  
+## 🚀 Contexto do Projeto
+O sistema simula uma redação digital onde três agentes de Inteligência Artificial colaboram para gerar conteúdos prontos para publicação no portal do JC, mantendo o tom de voz analítico e a credibilidade exigida pelo veículo.
 
-O objetivo é produzir matérias financeiras claras, confiáveis e baseadas em dados, com apoio de IA e curadoria humana.
+### 🧠 A Equipe Digital
+1. **Agente Júlia (Quantitativa):** Coleta dados em tempo real (Yahoo Finance) e calcula indicadores técnicos como o $SMA_{200}$ (Média Móvel de 200 dias).
+2. **Agente Pedro (Fundamentalista):** Analisa o sentimento do mercado e o contexto econômico via **Gemini 2.5 Flash**.
+3. **Agente Key (Editora-Chefe):** Consolida as informações e redige o artigo final no padrão Bloomberg/Valor Econômico, realizando o deploy automático via API Laravel.
 
-Tecnologias que iremos utilizar:  
-- Inteligência Artificial (assistentes virtuais, processamento de linguagem natural, modelos de IA, etc.)  
-- HTML, CSS, JavaScript  
-- Laravel + PHP  
-- Python  
-
-Recomendação: já comecem a estudar algumas dessas tecnologias, para que na próxima semana estejam mais familiarizados com o conteúdo.  
-
----
-
-## Diretórios
-
-- **src/** → Aplicação WordPress  
-- **db/** → Arquivos do banco de dados (**local!!! Não subir para o Git**)  
-- **DockerConfig/** → Arquivos de configuração do Docker  
-
----
-
-## Como rodar
-
-### 1. Levantar o ambiente (na raiz do projeto)
-
-```bash
-docker-compose up --build -d
-```
-
-### 2. Acessando a aplicação
-
-```bash
-http://localhost
-```
-
-### 3. Acessando o container da aplicação
-
-```bash
-docker exec -it agenda bash
-```
-
-### 4. Instalando as dependências
-
-```bash
-composer install
-```
-
-### 5. Acessando o container do Banco de Dados
-
-```bash
-docker exec -it db_agenda bash
-```
-
----
-
-## Problemas comuns no Windows
-
-```bash
-git config core.autocrlf input
-```
-
----
-
-## Observação Importante
-
-Caso você tenha problemas com o **Dockerfile**, efetue a instalação manualmente seguindo as instruções no arquivo [README2](README2.md).
+## 🛠️ Stack Tecnológica
+- **Backend:** Python (Flask) para a orquestração dos agentes.
+- **IA Generativa:** Google Gemini 2.5 Flash API.
+- **Painel Administrativo:** HTML5, Tailwind CSS e JavaScript (Dashboard de monitoramento JC).
+- **Infraestrutura:** Docker e Docker-Compose para ambiente produtivo.
+- **Integração de Dados:** API RESTful conectada ao sistema Laravel.

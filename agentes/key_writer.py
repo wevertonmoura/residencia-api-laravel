@@ -16,7 +16,7 @@ class GeminiWriter:
         )
 
     def escrever_artigo(self, dados_julia: StockData, dados_pedro: AnaliseSentimento, ticker: str) -> Optional[ArtigoFinal]:
-        logger.info(f"Key está redigindo a matéria sobre {ticker} com perfil sênior...")
+        logger.info(f"Key está redigindo a matéria sobre {ticker} ")
 
         # --- ENGENHARIA DE PROMPT AVANÇADA (Perfil Bloomberg/Valor) ---
         prompt = f"""

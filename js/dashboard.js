@@ -1,7 +1,9 @@
 // --- CONFIGURAÇÃO DE ENDPOINTS (ARQUITETURA HÍBRIDA) ---
-// Certifique-se de que esta URL base está correta para seu ambiente Laravel
-const LARAVEL_API = 'http://127.0.0.1/api';       // Para ler/salvar artigos (Porta 80)
-const PYTHON_API  = 'http://127.0.0.1:5000/gerar'; // Para gerar inteligência (Porta 5000)
+const LARAVEL_API = 'http://127.0.0.1/api';       // Para ler/salvar artigos (Porta 80)
+const PYTHON_API  = 'http://127.0.0.1:5000/gerar'; // Para gerar inteligência (Porta 5000)
+
+// Variável global para armazenar os artigos e evitar erros de aspas/caracteres especiais no HTML
+let artigosCache = []; 
 
 // --- UTILITÁRIOS ---
 
@@ -48,7 +50,7 @@ async function apiLaravel(endpoint, method='GET', body=null) {
     }
 }
 
-// --- RENDERIZAÇÃO (PADRÃO SÊNIOR) ---
+// --- RENDERIZAÇÃO ---
 
 function getTagColors(recomendacao) {
     const tag = recomendacao ? recomendacao.toUpperCase() : 'NEUTRO';
@@ -69,9 +71,6 @@ function renderCard(a, type) {
     const dataHora = formatDate(a.updated_at || a.created_at);
     const colors = getTagColors(a.recomendacao);
     const isUnderReview = type === 'rascunho' && a.motivo_revisao;
-    
-    // Escapa o conteúdo completo para ser seguro no onclick
-    const conteudoEscapado = a.conteudo ? a.conteudo.replace(/"/g, '&quot;').replace(/'/g, '&#39;') : '';
 
     // Adição de métrica de Views para artigos publicados (Simulação)
     const viewsElement = (type === 'publicado') ? `
@@ -111,8 +110,7 @@ function renderCard(a, type) {
         
         <div class="pl-3 flex-1">
             <h4 class="text-white font-extrabold text-lg leading-snug mb-1 transition-colors line-clamp-2">${a.titulo}</h4>
-            
-            <p class="text-sm text-slate-400 mb-2 line-clamp-2">${a.resumo || a.conteudo}</p>
+            <p class="text-sm text-slate-400 mb-2 line-clamp-2">${a.resumo || a.conteudo || "Clique em veja mais para ler a análise completa."}</p>
             
             ${isUnderReview ? `<span class="text-xs font-medium text-red-400 flex items-center gap-1" title="${a.motivo_revisao}"><i class="ph-bold ph-warning"></i> Revisão Necessária</span>` : `<p class="text-xs text-slate-500">ID: ${a.id}</p>`}
         </div>
@@ -121,7 +119,7 @@ function renderCard(a, type) {
             
             <button 
                 class="text-brand-400 hover:text-brand-300 font-semibold transition-colors text-sm flex items-center gap-1 mr-4"
-                onclick="abrirModalConteudo('${a.titulo.replace(/'/g, '&#39;')}', '${conteudoEscapado}')"
+                onclick="abrirModalConteudo('${a.id}')"
             >
                 <i class="ph-bold ph-eye"></i> Veja Mais
             </button>
@@ -134,37 +132,53 @@ function renderCard(a, type) {
 }
 
 // --- FUNÇÕES DE MODAL DE CONTEÚDO ---
-// ... (abrirModalConteudo, fecharModalConteudo - MANTIDAS) ...
 
-function abrirModalConteudo(titulo, conteudo) {
-    const modal = document.getElementById('modal-visualizar-artigo');
-    if (!modal) {
-        alert("Erro: Modal de visualização não encontrado na página HTML.");
-        return;
-    } 
-
-    document.getElementById('modal-titulo').innerText = titulo;
-    document.getElementById('modal-corpo-conteudo').innerHTML = conteudo; 
+function abrirModalConteudo(id) {
+    // Busca o artigo dentro do cache global usando o ID
+    const artigo = artigosCache.find(item => String(item.id) === String(id));
     
+    if (!artigo) {
+        alert("Erro: Conteúdo do artigo não encontrado. Tente atualizar a página.");
+        return;
+    }
+
+    const modal = document.getElementById('modal-visualizar-artigo');
+    const tituloElement = document.getElementById('modal-titulo');
+    const corpoElement = document.getElementById('modal-corpo-conteudo');
+
+    if (!modal || !tituloElement || !corpoElement) {
+        alert("Erro: Elementos do modal não encontrados no HTML.");
+        return;
+    }
+
+    // Preenche o modal
+    tituloElement.innerText = artigo.titulo;
+    
+    // Tratamento básico de Markdown para o conteúdo (Quebras de linha e Negritos)
+    const textoFormatado = (artigo.conteudo || "")
+        .replace(/\n/g, '<br>')
+        .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+
+    corpoElement.innerHTML = `<div class="prose prose-invert max-w-none">${textoFormatado}</div>`;
+    
+    // Exibe o modal
     modal.classList.remove('hidden'); 
     document.body.classList.add('overflow-hidden');
 }
 
 function fecharModalConteudo() {
-    document.getElementById('modal-visualizar-artigo').classList.add('hidden');
+    const modal = document.getElementById('modal-visualizar-artigo');
+    if (modal) modal.classList.add('hidden');
     document.body.classList.remove('overflow-hidden');
 }
 
-
-// --- RESTANTE DA LÓGICA (MANTIDO) ---
+// --- RESTANTE DA LÓGICA ---
 
 function emptyState(msg) {
     return `<div class="col-span-full py-8 text-center border-2 border-dashed border-slate-800 rounded-xl">
         <p class="text-slate-500 text-sm font-medium">${msg}</p>
     </div>`;
 }
-
-// --- CARREGAMENTO DE DADOS E NAVEGAÇÃO ---
 
 function showTab(tabName) {
     document.getElementById('tab-painel').classList.add('hidden');
@@ -196,23 +210,24 @@ async function loadAll() {
     toggleLoader(false);
 
     if (!pendentesResponse && !pubResponse) {
-        document.getElementById('list-rascunhos').innerHTML = emptyState('Erro ao conectar à API. Verifique se o backend está ativo e as rotas corretas (pendentes/publicados).');
-        document.getElementById('count-rascunhos').textContent = 0;
-        document.getElementById('count-publicados').textContent = 0;
-        document.getElementById('list-publicados').innerHTML = '';
+        document.getElementById('list-rascunhos').innerHTML = emptyState('Erro ao conectar à API Laravel.');
         return;
     }
 
-    const rascContainer = document.getElementById('list-rascunhos');
     const pendenteData = pendentesResponse?.data || pendentesResponse || [];
-
-    rascContainer.innerHTML = pendenteData.length ? pendenteData.map(a => renderCard(a, 'rascunho')).join('') : emptyState('Sem artigos pendentes de aprovação.');
-    document.getElementById('count-rascunhos').textContent = pendenteData.length; 
-
-    const pubContainer = document.getElementById('list-publicados');
     const publicadoData = pubResponse?.data || pubResponse || [];
 
-    pubContainer.innerHTML = publicadoData.length ? publicadoData.map(a => renderCard(a, 'publicado')).join('') : emptyState('Nenhum artigo publicado no Portal.');
+    // ATUALIZA O CACHE: Junta todos os artigos para o "Veja Mais" funcionar em qualquer lugar
+    artigosCache = [...pendenteData, ...publicadoData];
+
+    // Renderiza Rascunhos
+    const rascContainer = document.getElementById('list-rascunhos');
+    rascContainer.innerHTML = pendenteData.length ? pendenteData.map(a => renderCard(a, 'rascunho')).join('') : emptyState('Sem artigos pendentes.');
+    document.getElementById('count-rascunhos').textContent = pendenteData.length; 
+
+    // Renderiza Publicados
+    const pubContainer = document.getElementById('list-publicados');
+    pubContainer.innerHTML = publicadoData.length ? publicadoData.map(a => renderCard(a, 'publicado')).join('') : emptyState('Nenhum artigo publicado.');
     document.getElementById('count-publicados').textContent = publicadoData.length;
 }
 
@@ -221,50 +236,32 @@ async function loadLixeira() {
     const lixResponse = await apiLaravel('/artigos/lixeira');
     toggleLoader(false);
 
-    const lixContainer = document.getElementById('list-lixeira');
     const lixeiraData = lixResponse?.data || lixResponse || [];
+    
+    // Adiciona itens da lixeira ao cache também para permitir visualização
+    artigosCache = [...artigosCache, ...lixeiraData];
 
+    const lixContainer = document.getElementById('list-lixeira');
     lixContainer.innerHTML = lixeiraData.length ? lixeiraData.map(a => renderCard(a, 'lixeira')).join('') : emptyState('Lixeira vazia.');
 }
 
-// --- AÇÕES ESPECÍFICAS (FLUXO SÊNIOR) ---
+// --- AÇÕES DO LARAVEL ---
 
 async function aprovarArtigo(id) {
     if (!confirm('Confirmar publicação no Portal?')) return;
     toggleLoader(true);
     const result = await apiLaravel(`/artigos/${id}/aprovar`, 'POST');
     toggleLoader(false);
-
-    if (result) {
-        alert('Artigo publicado com sucesso!');
-        await loadAll();
-    } else {
-        alert('Erro ao publicar artigo.');
-    }
+    if (result) await loadAll();
 }
 
 async function despublicarArtigo(id) {
-    const motivo = prompt('Por favor, informe o motivo da despublicação (Correção, Conteúdo desatualizado, etc.):');
-    if (!motivo) {
-        alert('Despublicação cancelada. O motivo é obrigatório para auditoria.');
-        return;
-    }
-
-    if (!confirm(`Tem certeza que deseja DESPUBLICAR? O motivo será: "${motivo}".`)) return;
-
+    const motivo = prompt('Informe o motivo da despublicação:');
+    if (!motivo) return;
     toggleLoader(true);
-    
-    // Manter esta estrutura, mesmo que motivo_revisao seja null no backend.
     const result = await apiLaravel(`/artigos/${id}/desaprovar`, 'POST', { motivo_revisao: motivo }); 
-    
     toggleLoader(false);
-
-    if (result) {
-        alert('Artigo despublicado e movido para a fila de Pendentes com sucesso.');
-        await loadAll();
-    } else {
-        alert('Erro ao despublicar artigo. Verifique a conexão com o Laravel.');
-    }
+    if (result) await loadAll();
 }
 
 async function moverParaLixeira(id) {
@@ -272,7 +269,7 @@ async function moverParaLixeira(id) {
     toggleLoader(true);
     const result = await apiLaravel(`/artigos/${id}/lixeira`, 'POST');
     toggleLoader(false);
-    if(result) await loadAll(); else alert('Erro ao mover para lixeira.');
+    if(result) await loadAll();
 }
 
 async function restaurarArtigo(id) {
@@ -280,7 +277,7 @@ async function restaurarArtigo(id) {
     toggleLoader(true);
     const result = await apiLaravel(`/artigos/${id}/restaurar`, 'POST');
     toggleLoader(false);
-    if(result) await loadLixeira(); else alert('Erro ao restaurar artigo.');
+    if(result) await loadLixeira();
 }
 
 async function excluirPermanente(id) {
@@ -288,23 +285,10 @@ async function excluirPermanente(id) {
     toggleLoader(true);
     const result = await apiLaravel(`/artigos/${id}/permanente`, 'DELETE'); 
     toggleLoader(false);
-    if(result) await loadLixeira(); else alert('Erro ao excluir permanentemente.');
-}
-
-async function acao(id, tipo) {
-    if (tipo === 'aprovar') return aprovarArtigo(id);
-    if (tipo === 'desaprovar') return despublicarArtigo(id);
-    if (tipo === 'restaurar') return restaurarArtigo(id);
-    if (tipo === 'lixeira') return moverParaLixeira(id);
-    if (tipo === 'permanente') return excluirPermanente(id);
-    
-    const endpoint = `/artigos/${id}/${tipo}`;
-    await apiLaravel(endpoint, 'POST');
-    loadAll();
+    if(result) await loadLixeira();
 }
 
 // --- DISPARO DE I.A. (PYTHON) ---
-// ... (dispararIA - MANTIDO) ...
 
 async function dispararIA() {
     const scope = document.querySelector('input[name="scope"]:checked').value;
@@ -315,13 +299,8 @@ async function dispararIA() {
         ticker: (scope === 'single') ? tickerSelect.value : null
     };
 
-    let msg = (scope === 'all') 
-        ? "Iniciando varredura completa da carteira..." 
-        : `Iniciando análise exclusiva para ${tickerSelect.value}...`;
-
     fecharModal();
-    
-    alert(`🤖 COMANDO ENVIADO!\n\n${msg}\n\nOs agentes Júlia, Pedro e Key estão trabalhando em segundo plano.\nA página atualizará automaticamente em breve.`);
+    alert(`🤖 Comando enviado para a API Python! Os agentes estão trabalhando em segundo plano.`);
 
     try {
         const response = await fetch(PYTHON_API, {
@@ -330,22 +309,12 @@ async function dispararIA() {
             body: JSON.stringify(payload)
         });
 
-        if (response.ok) {
-            console.log("Python iniciou o processamento.");
-            startPolling();
-        } else {
-            console.error("Erro Python:", response.status);
-            alert("Erro ao contatar os agentes. Verifique se o api.py está rodando.");
-        }
-
+        if (response.ok) startPolling();
+        else alert("Erro ao contatar os agentes. Verifique se 'api.py' está rodando na porta 5000.");
     } catch(e) { 
-        console.error(e);
-        alert("Falha de conexão com a API Python (Porta 5000).\nCertifique-se de que o terminal 'python api.py' está aberto."); 
+        alert("Falha de conexão com a API Python. Verifique o terminal."); 
     }
 }
-
-
-// --- AUXILIARES UI ---
 
 function startPolling() {
     let attempts = 0;
@@ -356,23 +325,20 @@ function startPolling() {
     }, 5000);
 }
 
+// --- AUXILIARES UI ---
+
 function abrirModalGerar() { document.getElementById('modal-gerar').classList.remove('hidden'); }
 function fecharModal() { document.getElementById('modal-gerar').classList.add('hidden'); }
 
 function toggleSelect(enable) {
     const sel = document.getElementById('select-ticker');
     sel.disabled = !enable;
-    if(enable) {
-        sel.classList.remove('opacity-50');
-        sel.focus();
-    } else {
-        sel.classList.add('opacity-50');
-    }
+    enable ? sel.classList.remove('opacity-50') : sel.classList.add('opacity-50');
 }
 
 function toggleLoader(show) {
     const loader = document.getElementById('global-loader');
-    if(show) loader.classList.remove('hidden'); else loader.classList.add('hidden');
+    if(loader) show ? loader.classList.remove('hidden') : loader.classList.add('hidden');
 }
 
 // Inicialização
